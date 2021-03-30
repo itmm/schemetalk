@@ -24,7 +24,7 @@ public:
 	virtual Raw_Invocation *as_raw_invocation() { return nullptr; }
 };
 
-using Node_Ptr = std::unique_ptr<Node>;
+using Node_Ptr = std::shared_ptr<Node>;
 
 class Space: public Node {
 public:
@@ -37,7 +37,7 @@ class Compound: public Node {
 	Container children_;
 public:
 	Compound *as_compound() override { return this; }
-	void push(Node_Ptr &&value) { children_.push_back(std::move(value)); }
+	void push(const Node_Ptr& value) { children_.push_back(value); }
 	[[nodiscard]] Iter begin() const { return children_.cbegin(); }
 	[[nodiscard]] Iter end() const { return children_.cend(); }
 };
@@ -49,13 +49,13 @@ private:
 	Container children_;
 public:
 	Map *as_map() override { return this; }
-	void push(const std::string& key, Node_Ptr &&value);
+	void push(const std::string& key, const Node_Ptr &value);
 	[[nodiscard]] Iter begin() const { return children_.cbegin(); }
 	[[nodiscard]] Iter end() const { return children_.cend(); }
 };
 
-void Map::push(const std::string& key, Node_Ptr &&value) {
-	children_.emplace(key, std::move(value));
+void Map::push(const std::string& key, const Node_Ptr &value) {
+	children_.emplace(key, value);
 }
 
 class Map_Invocation: public Map {
@@ -91,7 +91,7 @@ std::istream::int_type read_compound(std::istream::int_type ch, Compound &compou
 	for (;;) {
 		bool has_space { false };
 		while (ch != EOF && ch <= ' ') { ch = std::cin.get(); has_space = true; }
-		if (has_space) { compound.push(std::make_unique<Space>()); }
+		if (has_space) { compound.push(std::make_shared<Space>()); }
 		if (ch == ']' || ch == EOF) {
 			break;
 		}
@@ -100,7 +100,7 @@ std::istream::int_type read_compound(std::istream::int_type ch, Compound &compou
 		if (! child) {
 			std::cerr << "expected child\n"; exit(EXIT_FAILURE);
 		}
-		compound.push(std::move(child));
+		compound.push(child);
 	}
 	return ch;
 }
@@ -112,7 +112,7 @@ std::istream::int_type read_raw_invocation(std::istream::int_type ch, Node_Ptr &
 	if (! name) {
 		std::cerr << "no raw method name\n"; exit(EXIT_FAILURE);
 	}
-	auto invocation = std::make_unique<Raw_Invocation>(std::move(name));
+	auto invocation = std::make_shared<Raw_Invocation>(std::move(name));
 	ch = read_compound(ch, *invocation);
 	if (ch == ']') {
 		ch = std::cin.get();
@@ -142,7 +142,7 @@ std::istream::int_type read_map(std::istream::int_type ch, Map &map) {
 		if (! child) {
 			std::cerr << "expected value\n"; exit(EXIT_FAILURE);
 		}
-		map.push(key, std::move(child));
+		map.push(key, child);
 	}
 	return ch;
 }
@@ -154,7 +154,7 @@ std::istream::int_type read_map_invocation(std::istream::int_type ch, Node_Ptr &
 	if (! name) {
 		std::cerr << "no map method name\n"; exit(EXIT_FAILURE);
 	}
-	auto invocation = std::make_unique<Map_Invocation>(std::move(name));
+	auto invocation = std::make_shared<Map_Invocation>(std::move(name));
 	ch = read_map(ch, *invocation);
 	if (ch == ')') {
 		ch = std::cin.get();
@@ -177,7 +177,7 @@ std::istream::int_type read_node(std::istream::int_type ch, Node_Ptr &node) {
 			token += static_cast<char>(ch);
 			ch = std::cin.get();
 		}
-		node = std::move(std::make_unique<Token>(token));
+		node = std::move(std::make_shared<Token>(token));
 	}
 	return ch;
 }
@@ -191,6 +191,7 @@ void print_node(Node &node, int indent);
 void print_compound(const Compound &compound, int indent = 0) {
 	print_indent(indent); std::cout << "[raw\n";
 	for (const auto &child : compound) {
+		print_indent(indent + 1);
 		print_node(*child, indent + 1);
 	}
 	print_indent(indent); std::cout << "]\n";
@@ -201,17 +202,14 @@ void print_raw_invocation(Raw_Invocation &invocation, int indent);
 
 void print_node(Node &node, int indent) {
 	if (node.as_token()) {
-		print_indent(indent);
 		std::cout << node.as_token()->token() << '\n';
 	} else if (node.as_map_invocation()) {
 		print_map_invocation(*node.as_map_invocation(), indent);
 	} else if (node.as_raw_invocation()) {
 		print_raw_invocation(*node.as_raw_invocation(), indent);
 	} else if (node.as_command()) {
-		print_indent(indent);
 		std::cout << "{_internal_command_}\n";
 	} else {
-		print_indent(indent);
 		std::cout << "{_UNKNOWN_}\n";
 	}
 }
@@ -219,39 +217,51 @@ void print_node(Node &node, int indent) {
 class Command: public Node {
 public:
 	Command *as_command() override { return this; }
-	virtual Node_Ptr execute(Map &called_state, Compound &invocation) = 0;
+	virtual Node_Ptr execute(Map &called_state, Map_Invocation &invocation) = 0;
 };
 
 class Add_Command: public Command {
 public:
-	Node_Ptr execute(Map &called_state, Compound &invocation) override {
-		return std::make_unique<Token>("42");
+	Node_Ptr execute(Map &called_state, Map_Invocation &invocation) override {
+		return std::make_shared<Token>("42");
+	}
+};
+
+class Map_Command: public Command {
+public:
+	Node_Ptr execute(Map &called_state, Map_Invocation &invocation) override {
+		Node_Ptr result = std::make_shared<Map>();
+		auto map = *result->as_map();
+		for (const auto &entry : invocation) {
+			map.push(entry.first, entry.second);
+		}
+		return result;
 	}
 };
 
 void print_map_invocation(Map_Invocation &invocation, int indent) {
-	print_indent(indent); std::cout << "(\n";
+	std::cout << "(";
 	print_node(invocation.name(), indent + 1);
 	for (const auto &entry : invocation) {
 		print_indent(indent + 1);
-		std::cout << entry.first << '\n';
+		std::cout << entry.first << ' ';
 		print_node(*entry.second, indent + 1);
 	}
 	print_indent(indent); std::cout << ")\n";
 }
 
 void print_map(Map &map, int indent) {
-	print_indent(indent); std::cout << "(map\n";
+	std::cout << "(map\n";
 	for (const auto &entry : map) {
 		print_indent(indent + 1);
-		std::cout << entry.first << '\n';
+		std::cout << entry.first << ' ';
 		print_node(*entry.second, indent + 1);
 	}
 	print_indent(indent); std::cout << ")\n";
 }
 
 void print_raw_invocation(Raw_Invocation &invocation, int indent) {
-	print_indent(indent); std::cout << "[\n";
+	std::cout << "[";
 	print_node(invocation.name(), indent + 1);
 	for (const auto &entry : invocation) {
 		print_indent(indent + 1);
@@ -263,7 +273,8 @@ void print_raw_invocation(Raw_Invocation &invocation, int indent) {
 int main() {
 	Compound root;
 	Map state;
-	state.push("add", std::make_unique<Add_Command>());
+	state.push("add", std::make_shared<Add_Command>());
+	state.push("map", std::make_shared<Map_Command>());
 	auto ch = read_compound(std::cin.get(), root);
 	if (ch != EOF) { std::cerr << "EOF expected\n"; exit(EXIT_FAILURE); }
 	print_compound(root);
