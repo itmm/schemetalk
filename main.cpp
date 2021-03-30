@@ -189,11 +189,11 @@ void print_indent(int indent) {
 void print_node(Node &node, int indent);
 
 void print_compound(const Compound &compound, int indent = 0) {
-	print_indent(indent); std::cout << "(\n";
+	print_indent(indent); std::cout << "[raw\n";
 	for (const auto &child : compound) {
 		print_node(*child, indent + 1);
 	}
-	print_indent(indent); std::cout << ")\n";
+	print_indent(indent); std::cout << "]\n";
 }
 
 void print_map_invocation(Map_Invocation &invocation, int indent);
@@ -209,10 +209,10 @@ void print_node(Node &node, int indent) {
 		print_raw_invocation(*node.as_raw_invocation(), indent);
 	} else if (node.as_command()) {
 		print_indent(indent);
-		std::cout << "[_internal_command_]\n";
+		std::cout << "{_internal_command_}\n";
 	} else {
 		print_indent(indent);
-		std::cout << "[_UNKNOWN_]\n";
+		std::cout << "{_UNKNOWN_}\n";
 	}
 }
 
