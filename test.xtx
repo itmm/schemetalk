@@ -1,5 +1,7 @@
 (define name: gauss with-params: (map for: n) to: (divide
+
 	value: (multiply value: n with: (add value: n to: 1))
 	by: 2
 ))
 (gauss for: 5)
+Some where (over) the rain(bow)s
