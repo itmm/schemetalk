@@ -7,7 +7,7 @@
 #include "node.h"
 #include "token.h"
 
-Node_Ptr eval_invocation(Node_Ptr node, State_Ptr state) {
+Node_Ptr eval_invocation(Node_Ptr node, const State_Ptr& state) {
 	const auto invocation { node->as_invocation() };
 	assert(invocation);
 	auto it { invocation->begin() };
@@ -26,7 +26,7 @@ Node_Ptr eval_invocation(Node_Ptr node, State_Ptr state) {
 	return node;
 }
 
-Node_Ptr eval(Node_Ptr node, State_Ptr state) {
+Node_Ptr eval(Node_Ptr node, const State_Ptr& state) {
 	if (node->as_invocation()) {
 		return eval_invocation(node, state);
 	} else {
