@@ -7,7 +7,7 @@
 #include "node.h"
 #include "token.h"
 
-Node_Ptr eval_invocation(Node_Ptr node, const State_Ptr& state) {
+Node_Ptr eval_invocation(Node_Ptr node, State &state) {
 	const auto invocation { node->as_invocation() };
 	assert(invocation);
 	auto it { invocation->begin() };
@@ -19,14 +19,14 @@ Node_Ptr eval_invocation(Node_Ptr node, const State_Ptr& state) {
 	}
 	if (! cmd->as_token()) { err("no command name"); }
 	auto key { cmd->as_token()->token() };
-	Command_Ptr real_cmd { state->find(key) };
+	Command_Ptr real_cmd { state.find(key) };
 	if (real_cmd) {
-		return real_cmd->eval(node, *state);
+		return real_cmd->eval(node, state);
 	}
 	return node;
 }
 
-Node_Ptr eval(Node_Ptr node, const State_Ptr& state) {
+Node_Ptr eval(Node_Ptr node, State &state) {
 	if (node->as_invocation()) {
 		return eval_invocation(node, state);
 	} else {

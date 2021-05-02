@@ -2,6 +2,7 @@
 
 #include "err.h"
 #include "invocation.h"
+#include "num.h"
 #include "token.h"
 
 static void print_indent(int indent, std::ostream &out) {
@@ -47,6 +48,8 @@ static void print_invocation(
 static void print_node(const Node &node, int indent, std::ostream &out) {
 	if (node.as_token()) {
 		out << node.as_token()->token();
+	} else if (node.as_number()) {
+		out << node.as_number()->value();
 	} else if (node.as_space()) {
 		print_indent(indent, out);
 	} else if (node.as_invocation()) {

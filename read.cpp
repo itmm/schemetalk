@@ -2,6 +2,7 @@
 
 #include "err.h"
 #include "invocation.h"
+#include "num.h"
 #include "space.h"
 #include "token.h"
 
@@ -31,13 +32,39 @@ static ch_type read_space(Node_Ptr &node, ch_type ch, std::istream &in) {
 	return ch;
 }
 
+static bool is_number(const std::string &token) {
+	auto it { token.begin() };
+	if (it != token.end() && (*it == '+' || *it == '-')) {
+		++it;
+	}
+	int digits { 0 };
+	while (it != token.end() && *it >= '0' && *it <= '9') {
+		++it; ++digits;
+	}
+	if (it != token.end() && *it == '.') {
+		++it;
+		while (it != token.end() && *it >= '0' && *it <= '9') {
+			++it; ++digits;
+		}
+	}
+	return it == token.end() && digits;
+}
+
+static double to_number(const std::string &token) {
+	return std::stod(token);
+}
+
 static ch_type read_token(Node_Ptr &node, ch_type ch, std::istream &in) {
 	std::string token;
 	while (ch != EOF && ch > ' ' && ch != '(' && ch != ')') {
 		token += static_cast<char>(ch);
 		ch = in.get();
 	}
-	node = std::make_shared<Token>(token);
+	if (is_number(token)) {
+		node = std::make_shared<Number>(to_number(token));
+	} else {
+		node = std::make_shared<Token>(token);
+	}
 	return ch;
 }
 

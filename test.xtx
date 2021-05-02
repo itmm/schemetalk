@@ -11,3 +11,10 @@
 )
 (gauss for: 5)
 Some where (over) the rain(bow)s
+(add value: (add
+	value: 1
+	to: 2
+) to: 3)
+(subtract from: 10 value: 3)
+(multiply value: 5 with: 10)
+(divide value: 12 by: 3)

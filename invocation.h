@@ -6,9 +6,9 @@
 
 class Invocation: public Node {
 	using Container = std::vector<Node_Ptr>;
-	using Iter = Container::const_iterator;
 	Container children_;
 public:
+	using Iter = Container::const_iterator;
 	[[nodiscard]] const Invocation *as_invocation() const override;
 	void push(const Node_Ptr& value) { children_.push_back(value); }
 	[[nodiscard]] Iter begin() const { return children_.cbegin(); }
