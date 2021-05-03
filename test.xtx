@@ -18,3 +18,4 @@ Some where (over) the rain(bow)s
 (subtract from: 10 value: 3)
 (multiply value: 5 with: 10)
 (divide value: 12 by: 3)
+(map a: 1 b: (add value: 1 to: 1))

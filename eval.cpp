@@ -2,12 +2,13 @@
 
 #include <cassert>
 
+#include "cmd.h"
 #include "err.h"
 #include "invocation.h"
 #include "node.h"
 #include "token.h"
 
-Node_Ptr eval_invocation(Node_Ptr node, State &state) {
+Node_Ptr eval_invocation(Node_Ptr node, Map &state) {
 	const auto invocation { node->as_invocation() };
 	assert(invocation);
 	auto it { invocation->begin() };
@@ -19,14 +20,17 @@ Node_Ptr eval_invocation(Node_Ptr node, State &state) {
 	}
 	if (! cmd->as_token()) { err("no command name"); }
 	auto key { cmd->as_token()->token() };
-	Command_Ptr real_cmd { state.find(key) };
-	if (real_cmd) {
-		return real_cmd->eval(node, state);
+	Node_Ptr node_cmd { state.find(key) };
+	if (node_cmd) {
+		const Command *real_cmd { node_cmd->as_command() };
+		if (real_cmd) {
+			return real_cmd->eval(node, state);
+		}
 	}
 	return node;
 }
 
-Node_Ptr eval(Node_Ptr node, State &state) {
+Node_Ptr eval(Node_Ptr node, Map &state) {
 	if (node->as_invocation()) {
 		return eval_invocation(node, state);
 	} else {

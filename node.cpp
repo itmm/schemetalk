@@ -15,3 +15,15 @@ const Invocation *Node::as_invocation() const {
 const Number *Node::as_number() const {
 	return nullptr;
 }
+
+const Command *Node::as_command() const {
+	return nullptr;
+}
+
+const Map *Node::as_map() const {
+	return nullptr;
+}
+
+Map *Node::as_map() {
+	return nullptr;
+}

@@ -2,6 +2,7 @@
 
 #include "err.h"
 #include "invocation.h"
+#include "map.h"
 #include "num.h"
 #include "token.h"
 
@@ -45,6 +46,24 @@ static void print_invocation(
 	out << ")";
 }
 
+static void print_map(
+	const Map &map, int indent, std::ostream &out
+) {
+	out << "(map";
+	bool with_args = false;
+	auto iter { map.begin() };
+	for (;;) {
+		if (iter == map.end()) { break; }
+		print_indent(indent + 1, out);
+		out << iter->first << ' ';
+		print_node(*iter->second, indent + 1, out);
+		with_args = true;
+		++iter;
+	}
+	if (with_args) { print_indent(indent, out); }
+	out << ")";
+}
+
 static void print_node(const Node &node, int indent, std::ostream &out) {
 	if (node.as_token()) {
 		out << node.as_token()->token();
@@ -54,6 +73,10 @@ static void print_node(const Node &node, int indent, std::ostream &out) {
 		print_indent(indent, out);
 	} else if (node.as_invocation()) {
 		print_invocation(*node.as_invocation(), indent, out);
+	} else if (node.as_command()) {
+		out << "##internal_command##";
+	} else if (node.as_map()) {
+		print_map(*node.as_map(), indent, out);
 	} else { err("unknown node"); }
 }
 

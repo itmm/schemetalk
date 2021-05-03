@@ -3,6 +3,7 @@
 #include "err.h"
 #include "eval.h"
 #include "invocation.h"
+#include "map.h"
 #include "num.h"
 #include "token.h"
 
@@ -12,7 +13,7 @@ static Invocation::Iter eat_space(Invocation::Iter it, Invocation::Iter end) {
 }
 
 static Invocation::Iter parse_one_arg(
-	const std::string &key, double &value, State &state,
+	const std::string &key, double &value, Map &state,
 	Invocation::Iter it, Invocation::Iter end
 ) {
 	it = eat_space(it, end);
@@ -30,10 +31,10 @@ static Invocation::Iter parse_one_arg(
 }
 
 static void parse_two_args_cmd(
-	const Node_Ptr invocation,
+	const Node_Ptr& invocation,
 	const std::string &key1, double &value1,
 	const std::string &key2, double &value2,
-	State &state
+	Map &state
 ) {
 	auto inv { *invocation->as_invocation() };
 	auto it { inv.begin() };
@@ -50,10 +51,10 @@ static void parse_two_args_cmd(
 
 class Arith_Add: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, State &state) override;
+	Node_Ptr eval(Node_Ptr invocation, Map &state) const override;
 };
 
-Node_Ptr Arith_Add::eval(Node_Ptr invocation, State &state) {
+Node_Ptr Arith_Add::eval(Node_Ptr invocation, Map &state) const {
 	double value, to;
 	parse_two_args_cmd(
 		invocation, "value:", value,
@@ -64,10 +65,10 @@ Node_Ptr Arith_Add::eval(Node_Ptr invocation, State &state) {
 
 class Arith_Sub: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, State &state) override;
+	Node_Ptr eval(Node_Ptr invocation, Map &state) const override;
 };
 
-Node_Ptr Arith_Sub::eval(Node_Ptr invocation, State &state) {
+Node_Ptr Arith_Sub::eval(Node_Ptr invocation, Map &state) const {
 	double from, value;
 	parse_two_args_cmd(
 		invocation, "from:", from,
@@ -78,10 +79,10 @@ Node_Ptr Arith_Sub::eval(Node_Ptr invocation, State &state) {
 
 class Arith_Mult: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, State &state) override;
+	Node_Ptr eval(Node_Ptr invocation, Map &state) const override;
 };
 
-Node_Ptr Arith_Mult::eval(Node_Ptr invocation, State &state) {
+Node_Ptr Arith_Mult::eval(Node_Ptr invocation, Map &state) const {
 	double value, with;
 	parse_two_args_cmd(
 		invocation, "value:", value,
@@ -92,10 +93,10 @@ Node_Ptr Arith_Mult::eval(Node_Ptr invocation, State &state) {
 
 class Arith_Div: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, State &state) override;
+	Node_Ptr eval(Node_Ptr invocation, Map &state) const override;
 };
 
-Node_Ptr Arith_Div::eval(Node_Ptr invocation, State &state) {
+Node_Ptr Arith_Div::eval(Node_Ptr invocation, Map &state) const {
 	double value, by;
 	parse_two_args_cmd(
 		invocation, "value:", value,
@@ -104,9 +105,10 @@ Node_Ptr Arith_Div::eval(Node_Ptr invocation, State &state) {
 	return std::make_shared<Number>(value / by);
 }
 
-void add_arith(const State_Ptr &state) {
-	state->push(std::make_unique<Arith_Add>(), "add");
-	state->push(std::make_unique<Arith_Sub>(), "subtract");
-	state->push(std::make_unique<Arith_Mult>(), "multiply");
-	state->push(std::make_unique<Arith_Div>(), "divide");
+void add_arith(const Node_Ptr &state) {
+	Map *s { state->as_map() };
+	s->push(std::make_unique<Arith_Add>(), "add");
+	s->push(std::make_unique<Arith_Sub>(), "subtract");
+	s->push(std::make_unique<Arith_Mult>(), "multiply");
+	s->push(std::make_unique<Arith_Div>(), "divide");
 }

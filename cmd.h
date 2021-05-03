@@ -2,11 +2,10 @@
 
 #include "node.h"
 
-class State;
+class Map;
 
-class Command {
+class Command: public Node {
 public:
-	virtual Node_Ptr eval(Node_Ptr invocation, State &state) = 0;
+	[[nodiscard]] const Command *as_command() const override;
+	virtual Node_Ptr eval(Node_Ptr invocation, Map &state) const = 0;
 };
-
-using Command_Ptr = std::shared_ptr<Command>;

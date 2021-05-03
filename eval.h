@@ -1,6 +1,6 @@
 #pragma once
 
 #include "node.h"
-#include "state.h"
+#include "map.h"
 
-Node_Ptr eval(Node_Ptr node, State &state);
+Node_Ptr eval(Node_Ptr node, Map &state);

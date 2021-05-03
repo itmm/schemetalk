@@ -1,5 +1,5 @@
 #pragma once
 
-#include "state.h"
+#include "node.h"
 
-void add_arith(const State_Ptr &state);
+void add_arith(const Node_Ptr &state);
