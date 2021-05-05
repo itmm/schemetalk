@@ -22,4 +22,3 @@ public:
 };
 
 using Node_Ptr = std::shared_ptr<Node>;
-

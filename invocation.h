@@ -14,4 +14,3 @@ public:
 	[[nodiscard]] Iter begin() const { return children_.cbegin(); }
 	[[nodiscard]] Iter end() const { return children_.cend(); }
 };
-

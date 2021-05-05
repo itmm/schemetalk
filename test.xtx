@@ -1,7 +1,7 @@
-(define
+(def
 	name: gauss
 	with-params: (map for: n)
-	to: (divide
+	as: (divide
 		value: (multiply
 		 	value: n
 		 	with: (add value: n to: 1)
@@ -9,13 +9,6 @@
 		by: 2
 	)
 )
-(gauss for: 5)
+(gauss for: 10)
 Some where (over) the rain(bow)s
-(add value: (add
-	value: 1
-	to: 2
-) to: 3)
-(subtract from: 10 value: 3)
-(multiply value: 5 with: 10)
-(divide value: 12 by: 3)
-(map a: 1 b: (add value: 1 to: 1))
+(subtract from: 10 value: 2)

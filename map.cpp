@@ -38,10 +38,10 @@ static Invocation::Iter eat_space(Invocation::Iter it, Invocation::Iter end) {
 
 class Map_Map: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, Map &state) const override;
+	Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
 };
 
-Node_Ptr Map_Map::eval(Node_Ptr invocation, Map &state) const {
+Node_Ptr Map_Map::eval(Node_Ptr invocation, Node_Ptr state) const {
 	Node_Ptr map { std::make_shared<Map>() };
 	auto inv { *invocation->as_invocation() };
 	auto it { inv.begin() };
