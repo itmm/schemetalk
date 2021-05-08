@@ -1,14 +1,15 @@
 (def
 	name: gauss
-	with-params: (map for: n)
-	as: (divide
-		value: (multiply
-		 	value: n
-		 	with: (add value: n to: 1)
+	as: (fn
+		with-params: (map for: n)
+		as: (divide
+			value: (multiply
+				value: n
+				with: (add value: n to: 1)
+			)
+			by: 2
 		)
-		by: 2
 	)
 )
 (gauss for: 10)
-Some where (over) the rain(bow)s
 (subtract from: 10 value: 2)

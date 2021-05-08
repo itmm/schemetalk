@@ -70,7 +70,10 @@ static ch_type read_token(Node_Ptr &node, ch_type ch, std::istream &in) {
 
 static ch_type read_node(Node_Ptr &node, ch_type ch, std::istream &in) {
 	switch (ch) {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "UnreachableCode"
 		case EOF: err("read after EOF");
+#pragma clang diagnostic pop
 		case ')': err("unmatched closing parenthesis");
 		case '(': {
 			ch = in.get();

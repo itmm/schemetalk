@@ -38,7 +38,9 @@ static Invocation::Iter eat_space(Invocation::Iter it, Invocation::Iter end) {
 
 class Map_Map: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+	[[nodiscard]] Node_Ptr eval(
+		Node_Ptr invocation, Node_Ptr state
+	) const override;
 };
 
 Node_Ptr Map_Map::eval(Node_Ptr invocation, Node_Ptr state) const {
@@ -55,7 +57,9 @@ Node_Ptr Map_Map::eval(Node_Ptr invocation, Node_Ptr state) const {
 		if (it == end) { break; }
 		Node_Ptr key { *it++ };
 		const Token *key_token { key->as_token() };
-		if (key_token && ! key_token->token().empty() && key_token->token().back() == ':') {
+		if (key_token && ! key_token->token().empty() &&
+			key_token->token().back() == ':'
+		) {
 			it = eat_space(it, end);
 			if (it != end) {
 				Node_Ptr value { *it++ };
