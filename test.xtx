@@ -1,7 +1,7 @@
 (def
 	name: gauss
 	as: (fn
-		with-params: (map for: n)
+		with-params: (map for:  n)
 		as: (divide
 			value: (multiply
 				value: n
@@ -13,4 +13,23 @@
 )
 (gauss for: 10)
 (subtract from: 10 value: 2)
-(cons head: 3 rest: (cons head: 4))
+nil
+(def
+	name: lst
+	as: (cons head: 3 rest: (cons head: 4))
+)
+(def
+	name: sum
+	as: (fn
+		with-params: (map list: l)
+		as: (if
+			cond: (empty? list: l)
+			then: 0
+			else: (add
+				value: (head list: l)
+				to: (sum list: (rest list: l))
+			)
+		)
+	)
+)
+(sum list: lst)

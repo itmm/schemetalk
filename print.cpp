@@ -96,10 +96,23 @@ static void print_node(const Node &node, int indent, std::ostream &out) {
 		print_map(*node.as_map(), indent, out);
 	} else if (node.as_pair()) {
 		print_pair(*node.as_pair(), indent, out);
+	} else if (node.is_true()) {
+		out << "true";
+	} else if (node.is_false()) {
+		out << "false";
 	} else { err("unknown node"); }
 }
 
 std::ostream& operator<<(std::ostream &out, const Node &node) {
 	print_node(node, 0, out);
+	return out;
+}
+
+std::ostream& operator<<(std::ostream &out, const Node_Ptr &node) {
+	if (node) {
+		out << *node;
+	} else {
+		out << "nil";
+	}
 	return out;
 }

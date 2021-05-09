@@ -21,6 +21,13 @@ public:
 	[[nodiscard]] virtual const Map *as_map() const;
 	[[nodiscard]] virtual Map *as_map();
 	[[nodiscard]] virtual const Pair *as_pair() const;
+	[[nodiscard]] virtual bool is_true() const;
+	[[nodiscard]] virtual bool is_false() const;
+	[[nodiscard]] bool is_bool() const;
 };
+
+inline bool Node::is_bool() const {
+	return is_true() || is_false();
+}
 
 using Node_Ptr = std::shared_ptr<Node>;

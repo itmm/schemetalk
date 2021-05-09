@@ -31,3 +31,11 @@ Map *Node::as_map() {
 const Pair *Node::as_pair() const {
 	return nullptr;
 }
+
+bool Node::is_true() const {
+	return false;
+}
+
+bool Node::is_false() const {
+	return false;
+}

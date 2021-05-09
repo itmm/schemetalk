@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "arith.h"
+#include "bool.h"
 #include "map.h"
 #include "eval.h"
 #include "read.h"
@@ -14,12 +15,13 @@ int main() {
 	add_map_commands(state);
 	add_dyn_commands(state);
 	add_pair_commands(state);
+	add_bool(state);
 
 	Node_Ptr root;
 	while (std::cin) {
 		std::cin >> root;
 		root = eval(root, state);
-		std::cout << *root;
+		std::cout << root;
 	}
 	return 0;
 }

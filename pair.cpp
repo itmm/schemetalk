@@ -7,6 +7,9 @@
 #include "map.h"
 #include "token.h"
 
+#include <iostream>
+#include "print.h"
+
 const Pair *Pair::as_pair() const {
 	return this;
 }
@@ -117,9 +120,88 @@ Node_Ptr Pair_Rest::eval(Node_Ptr invocation, Node_Ptr state) const {
 	} else { err("rest: no list"); }
 }
 
+class Pair_Empty: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(
+		Node_Ptr invocation, Node_Ptr state
+	) const override;
+};
+
+Node_Ptr Pair_Empty::eval(Node_Ptr invocation, Node_Ptr state) const {
+	Node_Ptr list;
+	auto inv { *invocation->as_invocation() };
+	auto it { inv.begin() };
+	auto end { inv.end() };
+	it = eat_space(it, end);
+	++it;
+	it = eat_space(it, end);
+	if (is_key("list:", it, end )) {
+		++it;
+		it = eat_space(it, end);
+		if (it != end) {
+			list = ::eval(*it++, state);
+		} else { err("empty?: no list: value"); }
+	} else { err("empty?: no list: entry"); }
+	it = eat_space(it, end);
+	if (it != end) { err("empty?: too many arguments"); }
+	bool fnd; // TODO: what is ! fnd
+	return state->as_map()->find(list ? "false" : "true", fnd);
+}
+
+class Pair_If: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(
+		Node_Ptr invocation, Node_Ptr state
+	) const override;
+};
+
+Node_Ptr Pair_If::eval(Node_Ptr invocation, Node_Ptr state) const {
+	auto inv { *invocation->as_invocation() };
+	auto it { inv.begin() };
+	auto end { inv.end() };
+	it = eat_space(it, end);
+	++it;
+	it = eat_space(it, end);
+	bool cond;
+	if (is_key("cond:", it, end )) {
+		++it;
+		it = eat_space(it, end);
+		if (it != end) {
+			auto c { ::eval(*it++, state) };
+			if (! c->is_bool()) { err("if: no bool cond:"); }
+			cond = c->is_true();
+		} else { err("if: no cond: value"); }
+	} else { err("if: no cond:"); }
+	for (;;) {
+		it = eat_space(it, end);
+		if (it == end) { break; }
+		if (is_key("then:", it, end)) {
+			it = eat_space(++it, end);
+			if (it != end) {
+				if (cond) {
+					return ::eval(*it, state);
+				}
+				++it;
+			} else { err("if: no then: value"); }
+		} else if (is_key("else:", it, end)) {
+			it = eat_space(++it, end);
+			if (it != end) {
+				if (! cond) {
+					return ::eval(*it, state);
+				}
+				++it;
+			} else { err("if: no else: value"); }
+		} else { err("unknown key "); }
+	}
+	return Node_Ptr { };
+}
+
 void add_pair_commands(const Node_Ptr &state) {
 	Map *m { state->as_map() };
 	m->push(std::make_shared<Pair_Cons>(), "cons");
 	m->push(std::make_shared<Pair_Head>(), "head");
 	m->push(std::make_shared<Pair_Rest>(), "rest");
+	m->push(std::make_shared<Pair_Empty>(), "empty?");
+	m->push(std::make_shared<Pair_If>(), "if");
+	m->push(Node_Ptr { }, "nil");
 }
