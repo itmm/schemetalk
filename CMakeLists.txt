@@ -5,6 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable(xtx main.cpp node.cpp space.cpp token.cpp invocation.cpp
     err.cpp read.cpp print.cpp eval.cpp map.cpp num.cpp arith.cpp cmd.cpp
-    dyn.cpp
+    dyn.cpp pair.cpp
 )
 include_directories(xtx .)

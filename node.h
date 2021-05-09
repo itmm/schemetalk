@@ -8,6 +8,7 @@ class Invocation;
 class Space;
 class Map;
 class Number;
+class Pair;
 
 class Node {
 public:
@@ -19,6 +20,7 @@ public:
 	[[nodiscard]] virtual const Command *as_command() const;
 	[[nodiscard]] virtual const Map *as_map() const;
 	[[nodiscard]] virtual Map *as_map();
+	[[nodiscard]] virtual const Pair *as_pair() const;
 };
 
 using Node_Ptr = std::shared_ptr<Node>;

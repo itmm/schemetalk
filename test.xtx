@@ -13,3 +13,4 @@
 )
 (gauss for: 10)
 (subtract from: 10 value: 2)
+(cons head: 3 rest: (cons head: 4))

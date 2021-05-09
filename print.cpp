@@ -4,6 +4,7 @@
 #include "invocation.h"
 #include "map.h"
 #include "num.h"
+#include "pair.h"
 #include "token.h"
 
 static void print_indent(int indent, std::ostream &out) {
@@ -64,6 +65,22 @@ static void print_map(
 	out << ")";
 }
 
+static void print_pair(
+	const Pair &pair, int indent, std::ostream &out
+) {
+	out << "(cons";
+	print_indent(indent + 1, out);
+	out << "head: ";
+	print_node(*pair.head(), indent + 1, out);
+	if (pair.rest()) {
+		print_indent(indent + 1, out);
+		out << "rest: ";
+		print_node(*pair.rest(), indent + 1, out);
+	}
+	print_indent(indent, out);
+	out << ")";
+}
+
 static void print_node(const Node &node, int indent, std::ostream &out) {
 	if (node.as_token()) {
 		out << node.as_token()->token();
@@ -77,6 +94,8 @@ static void print_node(const Node &node, int indent, std::ostream &out) {
 		out << "##internal_command##";
 	} else if (node.as_map()) {
 		print_map(*node.as_map(), indent, out);
+	} else if (node.as_pair()) {
+		print_pair(*node.as_pair(), indent, out);
 	} else { err("unknown node"); }
 }
 

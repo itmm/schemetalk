@@ -63,7 +63,7 @@ public:
 	) const override;
 };
 
-bool is_key(
+static bool is_key(
 	const std::string &key, Invocation::Iter it, Invocation::Iter end
 ) {
 	return it != end && (**it).as_token() &&

@@ -27,3 +27,7 @@ const Map *Node::as_map() const {
 Map *Node::as_map() {
 	return nullptr;
 }
+
+const Pair *Node::as_pair() const {
+	return nullptr;
+}
