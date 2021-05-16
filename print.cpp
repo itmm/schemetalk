@@ -72,7 +72,7 @@ static void print_pair(
 	print_indent(indent + 1, out);
 	out << "head: ";
 	print_node(*pair.head(), indent + 1, out);
-	if (pair.rest()) {
+	if (pair.rest() && pair.rest() != pair_nil) {
 		print_indent(indent + 1, out);
 		out << "rest: ";
 		print_node(*pair.rest(), indent + 1, out);
@@ -100,6 +100,8 @@ static void print_node(const Node &node, int indent, std::ostream &out) {
 		out << "true";
 	} else if (node.is_false()) {
 		out << "false";
+	} else if (&node == &*pair_nil) {
+		out << "nil";
 	} else { err("unknown node"); }
 }
 
@@ -112,7 +114,7 @@ std::ostream& operator<<(std::ostream &out, const Node_Ptr &node) {
 	if (node) {
 		out << *node;
 	} else {
-		out << "nil";
+		out << "#nil";
 	}
 	return out;
 }

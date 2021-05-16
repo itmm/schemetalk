@@ -14,18 +14,16 @@ Map *Map::as_map() {
 	return this;
 }
 
-Node_Ptr Map::find(const std::string& name, bool &found) const {
+Node_Ptr Map::find(const std::string& name) const {
 	auto fnd = values_.find(name);
 	if (fnd != values_.end()) {
-		found = true;
 		return fnd->second;
 	} else if (parent_) {
 		const Map *m { parent_->as_map() };
 		if (m) {
-			return m->find(name, found);
+			return m->find(name);
 		}
 	}
-	found = false;
 	return Node_Ptr { };
 }
 
@@ -65,7 +63,7 @@ Node_Ptr Map_Map::eval(Node_Ptr invocation, Node_Ptr state) const {
 			it = eat_space(it, end);
 			if (it != end) {
 				Node_Ptr value { *it++ };
-				//value = ::eval(value, state);
+				value = ::eval(value, state);
 				map->as_map()->push(value, key_token->token());
 				continue;
 			}

@@ -12,8 +12,11 @@ public:
 	[[nodiscard]] bool is_false() const override { return true; }
 };
 
+Node_Ptr bool_true { std::make_shared<Bool_True>() };
+Node_Ptr bool_false { std::make_shared<Bool_False>() };
+
 void add_bool(const Node_Ptr &state) {
 	Map *m { state->as_map() };
-	m->push(std::make_shared<Bool_True>(), "true");
-	m->push(std::make_shared<Bool_False>(), "false");
+	m->push(bool_true, "true");
+	m->push(bool_false, "false");
 }

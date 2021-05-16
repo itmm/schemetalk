@@ -14,4 +14,6 @@ public:
 	[[nodiscard]] const Node_Ptr &rest() const { return rest_; }
 };
 
+extern Node_Ptr pair_nil;
+
 void add_pair_commands(const Node_Ptr &state);

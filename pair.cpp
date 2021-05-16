@@ -6,9 +6,7 @@
 #include "invocation.h"
 #include "map.h"
 #include "token.h"
-
-#include <iostream>
-#include "print.h"
+#include "bool.h"
 
 const Pair *Pair::as_pair() const {
 	return this;
@@ -33,9 +31,11 @@ static bool is_key(
 		(**it).as_token()->token() == key;
 }
 
+Node_Ptr pair_nil { std::make_shared<Node>() }
+;
 Node_Ptr Pair_Cons::eval(Node_Ptr invocation, Node_Ptr state) const {
 	Node_Ptr head;
-	Node_Ptr rest;
+	Node_Ptr rest { pair_nil };
 	auto inv { *invocation->as_invocation() };
 	auto it { inv.begin() };
 	auto end { inv.end() };
@@ -140,12 +140,12 @@ Node_Ptr Pair_Empty::eval(Node_Ptr invocation, Node_Ptr state) const {
 		it = eat_space(it, end);
 		if (it != end) {
 			list = ::eval(*it++, state);
+			if (! list) { err("empty?: invalid list value"); }
 		} else { err("empty?: no list: value"); }
 	} else { err("empty?: no list: entry"); }
 	it = eat_space(it, end);
 	if (it != end) { err("empty?: too many arguments"); }
-	bool fnd; // TODO: what is ! fnd
-	return state->as_map()->find(list ? "false" : "true", fnd);
+	return list != pair_nil ? bool_false : bool_true;
 }
 
 class Pair_If: public Command {
@@ -203,5 +203,5 @@ void add_pair_commands(const Node_Ptr &state) {
 	m->push(std::make_shared<Pair_Rest>(), "rest");
 	m->push(std::make_shared<Pair_Empty>(), "empty?");
 	m->push(std::make_shared<Pair_If>(), "if");
-	m->push(Node_Ptr { }, "nil");
+	m->push(pair_nil, "nil");
 }

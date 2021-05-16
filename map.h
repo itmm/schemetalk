@@ -19,7 +19,7 @@ public:
 	[[nodiscard]] Iter end() const { return values_.end(); }
 	[[nodiscard]] const Map *as_map() const override;
 	[[nodiscard]] Map *as_map() override;
-	[[nodiscard]] Node_Ptr find(const std::string& name, bool &found) const;
+	[[nodiscard]] Node_Ptr find(const std::string& name) const;
 	void push(const Node_Ptr& node, const std::string& name);
 };
 

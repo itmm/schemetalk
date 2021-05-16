@@ -1,12 +1,10 @@
 #include <cassert>
-#include <iostream>
 #include "dyn.h"
 #include "err.h"
 #include "invocation.h"
 #include "map.h"
 #include "token.h"
 #include "eval.h"
-#include "print.h"
 
 static Invocation::Iter eat_space(Invocation::Iter it, Invocation::Iter end) {
 	while (it != end && (**it).as_space()) { ++it; }
@@ -31,14 +29,13 @@ Node_Ptr Dynamic::eval(Node_Ptr invocation, Node_Ptr state) const {
 		if (key_token && ! key_token->token().empty() &&
 			key_token->token().back() == ':'
 		) {
-			bool fnd;
 			Node_Ptr arg { parameters_->as_map()->find(
-				key_token->token(), fnd
+				key_token->token()
 			) };
-			if (! fnd) {
+			if (! arg) {
 				err("unknown argument '" + key_token->token() + "'");
 			}
-			if (! arg || ! arg->as_token()) {
+			if (! arg->as_token()) {
 				err("argument for '" + key_token->token() +
 					"' is no token"
 				);
