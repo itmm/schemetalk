@@ -33,3 +33,10 @@ nil
 	)
 )
 (sum list: lst)
+(def name: twos as: (fn as:
+	(rest list: (cons
+		head: (def name: x as: 42)
+		rest: (add value: x to: x)
+	))
+))
+(twos)x(twos)
