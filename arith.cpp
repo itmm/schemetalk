@@ -1,4 +1,5 @@
 #include "arith.h"
+#include "bool.h"
 #include "cmd.h"
 #include "err.h"
 #include "eval.h"
@@ -13,7 +14,7 @@ static Invocation::Iter eat_space(Invocation::Iter it, Invocation::Iter end) {
 }
 
 static Invocation::Iter parse_one_arg(
-	const std::string &key, double &value, Node_Ptr state,
+	const std::string &key, double &value, const Node_Ptr& state,
 	Invocation::Iter it, Invocation::Iter end
 ) {
 	it = eat_space(it, end);
@@ -34,7 +35,7 @@ static void parse_two_args_cmd(
 	const Node_Ptr& invocation,
 	const std::string &key1, double &value1,
 	const std::string &key2, double &value2,
-	Node_Ptr state
+	const Node_Ptr& state
 ) {
 	auto inv { *invocation->as_invocation() };
 	auto it { inv.begin() };
@@ -51,7 +52,7 @@ static void parse_two_args_cmd(
 
 class Arith_Add: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
 };
 
 Node_Ptr Arith_Add::eval(Node_Ptr invocation, Node_Ptr state) const {
@@ -65,7 +66,7 @@ Node_Ptr Arith_Add::eval(Node_Ptr invocation, Node_Ptr state) const {
 
 class Arith_Sub: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
 };
 
 Node_Ptr Arith_Sub::eval(Node_Ptr invocation, Node_Ptr state) const {
@@ -79,7 +80,7 @@ Node_Ptr Arith_Sub::eval(Node_Ptr invocation, Node_Ptr state) const {
 
 class Arith_Mult: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
 };
 
 Node_Ptr Arith_Mult::eval(Node_Ptr invocation, Node_Ptr state) const {
@@ -93,7 +94,7 @@ Node_Ptr Arith_Mult::eval(Node_Ptr invocation, Node_Ptr state) const {
 
 class Arith_Div: public Command {
 public:
-	Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
 };
 
 Node_Ptr Arith_Div::eval(Node_Ptr invocation, Node_Ptr state) const {
@@ -105,10 +106,100 @@ Node_Ptr Arith_Div::eval(Node_Ptr invocation, Node_Ptr state) const {
 	return std::make_shared<Number>(value / by);
 }
 
+class Arith_Equals: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+};
+
+Node_Ptr Arith_Equals::eval(Node_Ptr invocation, Node_Ptr state) const {
+	double value, to;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"compared-to:", to, state
+	);
+	return value == to ? bool_true : bool_false;
+}
+
+class Arith_Not_Equals: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+};
+
+Node_Ptr Arith_Not_Equals::eval(Node_Ptr invocation, Node_Ptr state) const {
+	double value, to;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"compared-to:", to, state
+	);
+	return value != to ? bool_true : bool_false;
+}
+
+class Arith_Greater: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+};
+
+Node_Ptr Arith_Greater::eval(Node_Ptr invocation, Node_Ptr state) const {
+	double value, to;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"compared-to:", to, state
+	);
+	return value > to ? bool_true : bool_false;
+}
+
+class Arith_Greater_Or_Equals: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+};
+
+Node_Ptr Arith_Greater_Or_Equals::eval(Node_Ptr invocation, Node_Ptr state) const {
+	double value, to;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"compared-to:", to, state
+	);
+	return value >= to ? bool_true : bool_false;
+}
+
+class Arith_Smaller: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+};
+
+Node_Ptr Arith_Smaller::eval(Node_Ptr invocation, Node_Ptr state) const {
+	double value, to;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"compared-to:", to, state
+	);
+	return value < to ? bool_true : bool_false;
+}
+
+class Arith_Smaller_Or_Equals: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+};
+
+Node_Ptr Arith_Smaller_Or_Equals::eval(Node_Ptr invocation, Node_Ptr state) const {
+	double value, to;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"compared-to:", to, state
+	);
+	return value <= to ? bool_true : bool_false;
+}
+
 void add_arith(const Node_Ptr &state) {
 	Map *s { state->as_map() };
 	s->push(std::make_shared<Arith_Add>(), "add");
 	s->push(std::make_shared<Arith_Sub>(), "subtract");
 	s->push(std::make_shared<Arith_Mult>(), "multiply");
 	s->push(std::make_shared<Arith_Div>(), "divide");
+	s->push(std::make_shared<Arith_Equals>(), "equals?");
+	s->push(std::make_shared<Arith_Not_Equals>(), "not-equals?");
+	s->push(std::make_shared<Arith_Greater>(), "greater?");
+	s->push(std::make_shared<Arith_Greater_Or_Equals>(), "greater-or-equals?");
+	s->push(std::make_shared<Arith_Smaller>(), "smaller?");
+	s->push(std::make_shared<Arith_Smaller_Or_Equals>(), "smaller-or-equals?");
 }

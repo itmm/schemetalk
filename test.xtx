@@ -9,7 +9,6 @@
 	)
 ))
 (gauss for: 10)
-(subtract from: 10 value: 2)
 nil
 (def name: lst as: (cons head: 3 rest: (cons head: 4)))
 (def name: sum as: (fn
@@ -31,3 +30,31 @@ nil
 	))
 ))
 (twos)x(twos)
+(def name: sum2 as: (fn
+	with-params: (map to: n)
+	as: (if
+		cond: (smaller-or-equals? value: n compared-to: 0)
+		then: 0
+		else: (add
+			value: n
+			to: (sum2 to: (subtract from: n value: 1))
+		)
+	)
+))
+(sum2 to: 10)
+(equals? value: 3 compared-to: 3)
+(equals? value: 3 compared-to: 2)
+(not-equals? value: 3 compared-to: 2)
+(not-equals? value: 3 compared-to: 3)
+(greater? value: 3 compared-to: 2)
+(greater? value: 3 compared-to: 3)
+(greater? value: 3 compared-to: 4)
+(greater-or-equals? value: 3 compared-to: 2)
+(greater-or-equals? value: 3 compared-to: 3)
+(greater-or-equals? value: 3 compared-to: 4)
+(smaller? value: 3 compared-to: 4)
+(smaller? value: 3 compared-to: 3)
+(smaller? value: 3 compared-to: 2)
+(smaller-or-equals? value: 3 compared-to: 4)
+(smaller-or-equals? value: 3 compared-to: 3)
+(smaller-or-equals? value: 3 compared-to: 2)
