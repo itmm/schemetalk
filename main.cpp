@@ -1,4 +1,6 @@
 #include <iostream>
+#include <sstream>
+#include <err.h>
 
 #include "arith.h"
 #include "bool.h"
@@ -8,6 +10,7 @@
 #include "pair.h"
 #include "print.h"
 #include "dyn.h"
+#include "pdf.h"
 
 int main() {
 	Node_Ptr state { std::make_shared<Map>() };
@@ -17,19 +20,35 @@ int main() {
 	add_pair_commands(state);
 	add_bool(state);
 
-	Node_Ptr root;
-	bool was_space { false };
-	while (std::cin) {
-		std::cin >> root;
-		root = eval(root, state);
-		if (! root) { break; }
-		if (root->as_space()) {
-			if (was_space) { continue; }
-			was_space = true;
-		} else {
+	{
+		Pdf_Writer writer(std::cout);
+		Node_Ptr node;
+		bool was_space { true };
+		std::string line;
+		while (std::cin) {
+			std::cin >> node;
+			if (node->as_invocation()) {
+				node = eval(node, state);
+			}
+			if (! node) { err("got null"); }
+			if (node->as_space()) {
+				was_space = true;
+				continue;
+			}
+			if (was_space) {
+				if (line.length() > 60) {
+					writer.write_log(line);
+					line = "";
+				} else {
+					line += " ";
+				}
+			}
+			std::ostringstream out;
+			out << node;
+			line += out.str();
 			was_space = false;
 		}
-		std::cout << root;
+		if (! line.empty()) { writer.write_log(line); }
 	}
 	return 0;
 }
