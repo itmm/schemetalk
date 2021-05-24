@@ -13,26 +13,39 @@
 #include "print.h"
 #include "token.h"
 
+Map_Writer::Map_Writer(Pdf_Writer *root): root_ { root } {
+	root_->write_line("\t<<");
+}
+
+Map_Writer::~Map_Writer() {
+	root_->write_line("\t>>");
+}
+
+List_Writer::List_Writer(Pdf_Writer *root): root_ { root } {
+	root_->append_to_line("[ ");
+}
+
+List_Writer::~List_Writer() {
+	root_->write_line(" ]");
+}
+
+void Pdf_Writer::append_to_line(const std::string &line) {
+	position_ += static_cast<int>(line.length()) ;
+	out_ << line ;
+}
+
 void Pdf_Writer::write_line(const std::string &line) {
-	position_ += static_cast<int>(line.length()) + 1;
-	out_ << line << '\n';
+	append_to_line(line);
+	++position_;
+	out_ << '\n';
 }
 
-void Pdf_Writer::open_dict_() {
-	assert(in_dict_ <= 0);
-	write_line("  <<");
-	++in_dict_;
-}
-
-void Pdf_Writer::close_dict_() {
-	assert(in_dict_ > 0);
-	write_line("  >>");
-	--in_dict_;
+Map_Writer_Ptr Pdf_Writer::open_dict_() {
+	return std::make_unique<Map_Writer>(this);
 }
 
 void Pdf_Writer::open_plain_obj_(int id) {
 	assert(obj_id_ == -1);
-	assert(in_dict_ <= 0);
 	assert(! obj_poss_[id]);
 	obj_poss_[id] = position_;
 	obj_id_ = id;
@@ -41,15 +54,13 @@ void Pdf_Writer::open_plain_obj_(int id) {
 	write_line(line.str());
 }
 
-void Pdf_Writer::open_obj(int id) {
+Map_Writer_Ptr Pdf_Writer::open_obj(int id) {
 	open_plain_obj_(id);
-	open_dict_();
+	return open_dict_();
 }
 
 void Pdf_Writer::close_obj() {
 	assert(obj_id_ > 0);
-	if (in_dict_ > 0) { close_dict_(); }
-	if (in_dict_ > 0) { err("too many open dicts in object"); }
 	int stream_length = position_ - stream_start_;
 	if (stream_start_ > 0) {
 		write_line("endstream");
@@ -68,71 +79,59 @@ void Pdf_Writer::close_obj() {
 	}
 }
 
-void Pdf_Writer::int_entry(const std::string &name, int value) {
-	assert(in_dict_ > 0);
+void Map_Writer::int_entry(const std::string &name, int value) {
 	assert(! name.empty() && name[0] == '/');
 	std::ostringstream line;
 	line << "    " << name << ' ' << value;
-	write_line(line.str());
+	root_->write_line(line.str());
 }
 
-void Pdf_Writer::tok_entry(const std::string &name, const std::string &tok) {
-	assert(in_dict_ > 0);
+void List_Writer::int_entry(int value) {
+	std::ostringstream line;
+	line << ' ' << value;
+	root_->append_to_line(line.str());
+}
+
+void Map_Writer::tok_entry(const std::string &name, const std::string &tok) {
 	assert(! name.empty() && name[0] == '/');
 	assert(! tok.empty() && tok[0] == '/');
 	std::ostringstream line;
 	line << "    " << name << ' ' << tok;
-	write_line(line.str());
+	root_->write_line(line.str());
 }
 
-void Pdf_Writer::obj_entry(const std::string &name, int id) {
-	assert(in_dict_ > 0);
+void Map_Writer::obj_entry(const std::string &name, int id) {
 	assert(! name.empty() && name[0] == '/');
-	assert(id > 0 && id < next_obj_);
 	std::ostringstream line;
 	line << "    " << name << ' ' << id << " 0 R";
-	write_line(line.str());
+	root_->write_line(line.str());
 }
 
-void Pdf_Writer::obj_list_entry(const std::string &name, const std::vector<int> &ids) {
-	assert(in_dict_ > 0);
-	assert(! name.empty() && name[0] == '/');
+void List_Writer::obj_entry(int id) {
 	std::ostringstream line;
-	line << "    " << name << " [";
-	for (const int &i : ids) {
-		line << ' ' << i << " 0 R";
-	}
-	line << " ]";
-	write_line(line.str());
+	line << ' ' << id << " 0 R";
+	root_->append_to_line(line.str());
 }
 
-void Pdf_Writer::int_list_entry(const std::string &name, const std::vector<int> &ints) {
-	assert(in_dict_ > 0);
+Map_Writer_Ptr Map_Writer::open_dict_entry(const std::string &name) {
 	assert(! name.empty() && name[0] == '/');
-	std::ostringstream line;
-	line << "    " << name << " [";
-	for (const int &i : ints) {
-		line << ' ' << i ;
-	}
-	line << " ]";
-	write_line(line.str());
+	root_->append_to_line(name + " ");
+	return std::make_unique<Map_Writer>(root_);
 }
 
-void Pdf_Writer::open_dict_entry(const std::string &name) {
-	assert(in_dict_ > 0);
+List_Writer_Ptr Map_Writer::open_list_entry(const std::string &name) {
 	assert(! name.empty() && name[0] == '/');
-	write_line(name + " <<");
-	++in_dict_;
+	root_->append_to_line(name + " ");
+	return std::make_unique<List_Writer>(root_);
 }
 
-void Pdf_Writer::open_stream() {
+void Pdf_Writer::open_stream(Map_Writer_Ptr map) {
 	assert(obj_id_ > 0);
-	assert(in_dict_ == 1);
 	assert(stream_length_id_ < 0);
 	assert(stream_start_ < 0);
 	stream_length_id_ = reserve_obj();
-	obj_entry("/Length", stream_length_id_);
-	close_dict_();
+	map->obj_entry("/Length", stream_length_id_);
+	map.reset();
 	write_line("stream");
 	stream_start_ = position_;
 }
@@ -140,37 +139,58 @@ void Pdf_Writer::open_stream() {
 Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 	write_line("%PDF-1.4");
 	root_id_ = reserve_obj();
-	open_obj(root_id_);
-	tok_entry("/Type", "/Catalog");
 	int pages = reserve_obj();
-	obj_entry("/Pages", pages);
+	{
+		Map_Writer_Ptr map = open_obj(root_id_);
+		map->tok_entry("/Type", "/Catalog");
+		map->obj_entry("/Pages", pages);
+	}
 	close_obj();
-	open_obj(pages);
-	tok_entry("/Type", "/Pages");
-	int_entry("/Count", 1);
 	int page = reserve_obj();
-	obj_list_entry("/Kids", { page });
+	{
+		Map_Writer_Ptr map = open_obj(pages);
+		map->tok_entry("/Type", "/Pages");
+		map->int_entry("/Count", 1);
+		{
+			List_Writer_Ptr lst { map->open_list_entry("/Kids") };
+			lst->obj_entry(page);
+		}
+	}
 	close_obj();
-	open_obj(page);
-	tok_entry("/Type", "/Page");
-	obj_entry("/Parent", pages);
-	int_list_entry("/MediaBox", { 0, 0, 612, 792 });
-	open_dict_entry("/Resources");
-	open_dict_entry("/Font");
 	int font_id = reserve_obj();
-	obj_entry("/F0", font_id);
-	close_dict_();
-	close_dict_();
 	int content_id = reserve_obj();
-	obj_entry("/Contents", content_id);
+	{
+		Map_Writer_Ptr map = open_obj(page);
+		map->tok_entry("/Type", "/Page");
+		map->obj_entry("/Parent", pages);
+		{
+			List_Writer_Ptr lst { map->open_list_entry("/MediaBox") };
+			lst->int_entry(0);
+			lst->int_entry(0);
+			lst->int_entry(612);
+			lst->int_entry(792);
+		}
+		{
+			Map_Writer_Ptr resources = map->open_dict_entry("/Resources");
+			{
+				Map_Writer_Ptr font = resources->open_dict_entry("/Font");
+				font->obj_entry("/F0", font_id);
+			}
+		}
+		map->obj_entry("/Contents", content_id);
+	}
 	close_obj();
-	open_obj(font_id);
-	tok_entry("/Type", "/Font");
-	tok_entry("/Subtype", "/Type1");
-	tok_entry("/BaseFont", "/TimesRoman");
+	{
+		Map_Writer_Ptr map = open_obj(font_id);
+		map->tok_entry("/Type", "/Font");
+		map->tok_entry("/Subtype", "/Type1");
+		map->tok_entry("/BaseFont", "/TimesRoman");
+	}
 	close_obj();
-	open_obj(content_id);
-	open_stream();
+	{
+		Map_Writer_Ptr map = open_obj(content_id);
+		open_stream(std::move(map));
+	}
 	write_line("BT");
 	write_line("    /F0 12 Tf");
 	write_line("    72 720 Td");
@@ -181,7 +201,6 @@ Pdf_Writer::~Pdf_Writer() {
 	write_line("ET");
 	close_obj();
 	assert(obj_id_ == -1);
-	assert(! in_dict_);
 	int xref { position_ };
 	write_line("xref");
 	{
@@ -200,12 +219,13 @@ Pdf_Writer::~Pdf_Writer() {
 		} else { std::cerr << "no object for id " << i << "\n"; }
 	}
 	write_line("trailer");
-	open_dict_();
-	int_entry("/Size", next_obj_);
-	if (root_id_ > 0) {
-		obj_entry("/Root", root_id_);
+	{
+		Map_Writer_Ptr trailer = open_dict_();
+		trailer->int_entry("/Size", next_obj_);
+		if (root_id_ > 0) {
+			trailer->obj_entry("/Root", root_id_);
+		}
 	}
-	close_dict_();
 	write_line("startxref");
 	{
 		std::ostringstream line;

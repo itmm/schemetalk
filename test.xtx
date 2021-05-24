@@ -66,4 +66,5 @@ nil
 (assert-false test: (and value: true with: false))
 (pdf as: out.pdf with: all unit tests successful
 	(cons head: 3 rest: lst)
+	nil
 )
