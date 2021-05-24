@@ -11,6 +11,7 @@
 #include "invocation.h"
 #include "map.h"
 #include "print.h"
+#include "token.h"
 
 void Pdf_Writer::write_line(const std::string &line) {
 	position_ += static_cast<int>(line.length()) + 1;
@@ -230,9 +231,25 @@ Node_Ptr Pdf_Cmd::eval(Node_Ptr invocation, Node_Ptr state) const {
 	it = eat_space(it, end);
 	if (it != end) { ++it; }
 	it = eat_space(it, end);
+	if (it == end || ! (**it).as_token() || (**it).as_token()->token() != "as:") {
+		err("pdf: expected as: parameter");
+	}
+	it = eat_space(++it, end);
+	if (it == end) { err("no as: value"); }
+	Node_Ptr path { ::eval(*it++, state) };
+	if (! path || ! path->as_token()) {
+		err("no as: token value");
+	}
 
-	std::ofstream out("out.pdf");
+	std::ofstream out(path->as_token()->token().c_str());
 	Pdf_Writer writer(out);
+
+	it = eat_space(it, end);
+	if (it == end || ! (**it).as_token() || (**it).as_token()->token() != "with:") {
+		err("pdf: expected with: parameter");
+	}
+	it = eat_space(++it, end);
+
 	Node_Ptr value;
 
 	while (it != end) {
