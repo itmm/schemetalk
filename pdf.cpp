@@ -215,6 +215,21 @@ Pdf_Writer::~Pdf_Writer() {
 	write_line("%%EOF");
 }
 
+void Pdf_Writer::write_log(const std::string &line) {
+	std::ostringstream out;
+	out << "    (";
+	for (char c : line) {
+		switch (c) {
+		case '(': case ')': case '\\':
+			out << '\\'; // fallthrough
+		default:
+			out << c;
+		}
+	}
+	out << ") '";
+	write_line(out.str());
+}
+
 class Pdf_Cmd: public Command {
 public:
 	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
@@ -279,3 +294,4 @@ void add_pdf_commands(const Node_Ptr &state) {
 	Map *s { state->as_map() };
 	s->push(std::make_shared<Pdf_Cmd>(), "pdf");
 }
+

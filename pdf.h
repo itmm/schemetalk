@@ -35,9 +35,7 @@ public:
 	void tok_entry(const std::string &name, const std::string &tok);
 	void open_dict_entry(const std::string &name);
 
-	void write_log(const std::string &line) {
-		write_line("    (" + line + ") '");
-	}
+	void write_log(const std::string &line);
 
 	void open_obj(int id);
 	void close_obj();

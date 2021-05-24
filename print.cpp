@@ -7,20 +7,15 @@
 #include "pair.h"
 #include "token.h"
 
-static void print_indent(int indent, std::ostream &out) {
-	out << "\n";
-	for (int i { indent }; i; --i) { out << '\t'; }
-}
-
 static inline bool is_key(const Node &node) {
 	auto token { node.as_token() };
 	return token && token->token().back() == ':';
 }
 
-static void print_node(const Node &node, int indent, std::ostream &out);
+static void print_node(const Node &node, std::ostream &out);
 
 static void print_invocation(
-	const Invocation &invocation, int indent, std::ostream &out
+	const Invocation &invocation, std::ostream &out
 ) {
 	out << "(";
 	auto iter { invocation.begin() };
@@ -28,9 +23,8 @@ static void print_invocation(
 		out << ' '; ++iter;
 	}
 	if (iter == invocation.end()) { err("empty invocation"); }
-	print_node(**iter, indent, out);
+	print_node(**iter, out);
 	bool was_key = false;
-	bool with_args = false;
 	while (++iter != invocation.end()) {
 		if (was_key) {
 			was_key = false;
@@ -39,63 +33,53 @@ static void print_invocation(
 				continue;
 			}
 		}
-		print_node(**iter, indent + 1, out);
-		with_args = true;
+		print_node(**iter, out);
 		if (is_key(**iter)) { was_key = true; }
 	}
-	if (with_args) { print_indent(indent, out); }
 	out << ")";
 }
 
 static void print_map(
-	const Map &map, int indent, std::ostream &out
+	const Map &map, std::ostream &out
 ) {
 	out << "(map";
-	bool with_args = false;
 	auto iter { map.begin() };
 	for (;;) {
 		if (iter == map.end()) { break; }
-		print_indent(indent + 1, out);
-		out << iter->first << ' ';
-		print_node(*iter->second, indent + 1, out);
-		with_args = true;
+		out << ' ' << iter->first << ' ';
+		print_node(*iter->second,  out);
 		++iter;
 	}
-	if (with_args) { print_indent(indent, out); }
 	out << ")";
 }
 
 static void print_pair(
-	const Pair &pair, int indent, std::ostream &out
+	const Pair &pair, std::ostream &out
 ) {
-	out << "(cons";
-	print_indent(indent + 1, out);
-	out << "head: ";
-	print_node(*pair.head(), indent + 1, out);
+	out << "(cons head: ";
+	print_node(*pair.head(), out);
 	if (pair.rest() && pair.rest() != pair_nil) {
-		print_indent(indent + 1, out);
-		out << "rest: ";
-		print_node(*pair.rest(), indent + 1, out);
+		out << " rest: ";
+		print_node(*pair.rest(), out);
 	}
-	print_indent(indent, out);
 	out << ")";
 }
 
-static void print_node(const Node &node, int indent, std::ostream &out) {
+static void print_node(const Node &node, std::ostream &out) {
 	if (node.as_token()) {
 		out << node.as_token()->token();
 	} else if (node.as_number()) {
 		out << node.as_number()->value();
 	} else if (node.as_space()) {
-		print_indent(indent, out);
+		out << ' ';
 	} else if (node.as_invocation()) {
-		print_invocation(*node.as_invocation(), indent, out);
+		print_invocation(*node.as_invocation(), out);
 	} else if (node.as_command()) {
 		out << "##internal_command##";
 	} else if (node.as_map()) {
-		print_map(*node.as_map(), indent, out);
+		print_map(*node.as_map(), out);
 	} else if (node.as_pair()) {
-		print_pair(*node.as_pair(), indent, out);
+		print_pair(*node.as_pair(), out);
 	} else if (node.is_true()) {
 		out << "true";
 	} else if (node.is_false()) {
@@ -106,7 +90,7 @@ static void print_node(const Node &node, int indent, std::ostream &out) {
 }
 
 std::ostream& operator<<(std::ostream &out, const Node &node) {
-	print_node(node, 0, out);
+	print_node(node, out);
 	return out;
 }
 
