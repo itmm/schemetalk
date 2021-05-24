@@ -4,6 +4,7 @@
 #include <map>
 #include <list>
 #include <vector>
+#include "node.h"
 
 class Pdf_Writer {
 	std::ostream &out_;
@@ -42,3 +43,5 @@ public:
 	void close_obj();
 	void open_stream();
 };
+
+void add_pdf_commands(const Node_Ptr &state);

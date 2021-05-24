@@ -18,10 +18,10 @@ int main() {
 	add_map_commands(state);
 	add_dyn_commands(state);
 	add_pair_commands(state);
+	add_pdf_commands(state);
 	add_bool(state);
 
 	{
-		Pdf_Writer writer(std::cout);
 		Node_Ptr node;
 		bool was_space { true };
 		std::string line;
@@ -36,7 +36,7 @@ int main() {
 				continue;
 			}
 			if (was_space && ! line.empty()) {
-				writer.write_log(line);
+				std::cout << line << '\n';
 				line = "";
 			}
 			std::ostringstream out;
@@ -44,7 +44,7 @@ int main() {
 			line += out.str();
 			was_space = false;
 		}
-		if (! line.empty()) { writer.write_log(line); }
+		if (! line.empty()) { std::cout << line << '\n'; }
 	}
 	return 0;
 }

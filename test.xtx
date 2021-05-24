@@ -64,3 +64,4 @@ nil
 (assert-false test: (or value: false with: false))
 (assert test: (and value: true with: true))
 (assert-false test: (and value: true with: false))
+(pdf all unit tests successful)

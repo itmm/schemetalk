@@ -1,9 +1,16 @@
+#include "pdf.h"
+
 #include <cassert>
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 
-#include "pdf.h"
+#include "cmd.h"
 #include "err.h"
+#include "eval.h"
+#include "invocation.h"
+#include "map.h"
+#include "print.h"
 
 void Pdf_Writer::write_line(const std::string &line) {
 	position_ += static_cast<int>(line.length()) + 1;
@@ -205,4 +212,53 @@ Pdf_Writer::~Pdf_Writer() {
 		write_line(line.str());
 	}
 	write_line("%%EOF");
+}
+
+class Pdf_Cmd: public Command {
+public:
+	[[nodiscard]] Node_Ptr eval(Node_Ptr invocation, Node_Ptr state) const override;
+};
+
+static Invocation::Iter eat_space(Invocation::Iter it, Invocation::Iter end) {
+	while (it != end && (**it).as_space()) { ++it; }
+	return it;
+}
+
+Node_Ptr Pdf_Cmd::eval(Node_Ptr invocation, Node_Ptr state) const {
+	auto it { invocation->as_invocation()->begin() };
+	auto end { invocation->as_invocation()->end() };
+	it = eat_space(it, end);
+	if (it != end) { ++it; }
+	it = eat_space(it, end);
+
+	std::ofstream out("out.pdf");
+	Pdf_Writer writer(out);
+	Node_Ptr value;
+
+	while (it != end) {
+		std::ostringstream line;
+		for (; it != end && *it && ! (**it).as_space(); ++it) {
+			value = *it;
+			if (value->as_invocation()) {
+				value = ::eval(value, state);
+				if (! value || value->as_space()) {
+					if (! line.str().empty()) {
+						writer.write_log(line.str());
+					}
+					++it; break;
+				}
+			}
+			line << value;
+		}
+		if (! line.str().empty()) {
+			writer.write_log(line.str());
+		}
+		it = eat_space(it, end);
+	}
+	return value;
+}
+
+void add_pdf_commands(const Node_Ptr &state) {
+	Map *s { state->as_map() };
+	s->push(std::make_shared<Pdf_Cmd>(), "pdf");
 }
