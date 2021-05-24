@@ -44,38 +44,34 @@ Map_Writer_Ptr Pdf_Writer::open_dict_() {
 	return std::make_unique<Map_Writer>(this);
 }
 
-void Pdf_Writer::open_plain_obj_(int id) {
-	assert(obj_id_ == -1);
-	assert(! obj_poss_[id]);
-	obj_poss_[id] = position_;
-	obj_id_ = id;
+Obj_Writer::Obj_Writer(int id, Pdf_Writer *root): root_ { root } {
 	std::ostringstream line;
 	line << id << " 0 obj";
-	write_line(line.str());
+	root_->write_line(line.str());
 }
 
-Map_Writer_Ptr Pdf_Writer::open_obj(int id) {
-	open_plain_obj_(id);
-	return open_dict_();
+Obj_Writer_Ptr Pdf_Writer::open_obj(int id) {
+	assert(! obj_poss_[id]);
+	obj_poss_[id] = position_;
+	return std::make_unique<Obj_Writer>(id, this);
 }
 
-void Pdf_Writer::close_obj() {
-	assert(obj_id_ > 0);
-	int stream_length = position_ - stream_start_;
+Obj_Writer::~Obj_Writer() {
+	int stream_length = root_->position() - stream_start_;
 	if (stream_start_ > 0) {
-		write_line("endstream");
+		root_->write_line("endstream");
 		stream_start_ = -1;
 	}
-	write_line("endobj");
-	obj_id_ = -1;
+	root_->write_line("endobj");
 	if (stream_length_id_ > 0) {
 		int id { stream_length_id_ };
 		stream_length_id_ = -1;
-		open_plain_obj_(id);
-		std::ostringstream line;
-		line << "    " << stream_length;
-		write_line(line.str());
-		close_obj();
+		{
+			Obj_Writer_Ptr obj { root_->open_obj(id) };
+			std::ostringstream line;
+			line << "    " << stream_length;
+			root_->write_line(line.str());
+		}
 	}
 }
 
@@ -125,15 +121,18 @@ List_Writer_Ptr Map_Writer::open_list_entry(const std::string &name) {
 	return std::make_unique<List_Writer>(root_);
 }
 
-void Pdf_Writer::open_stream(Map_Writer_Ptr map) {
-	assert(obj_id_ > 0);
+Map_Writer_Ptr Obj_Writer::open_dict() {
+	return std::make_unique<Map_Writer>(root_);
+}
+
+void Obj_Writer::open_stream(Map_Writer_Ptr map) {
 	assert(stream_length_id_ < 0);
 	assert(stream_start_ < 0);
-	stream_length_id_ = reserve_obj();
+	stream_length_id_ = root_->reserve_obj();
 	map->obj_entry("/Length", stream_length_id_);
 	map.reset();
-	write_line("stream");
-	stream_start_ = position_;
+	root_->write_line("stream");
+	stream_start_ = root_->position();
 }
 
 Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
@@ -141,55 +140,65 @@ Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 	root_id_ = reserve_obj();
 	int pages = reserve_obj();
 	{
-		Map_Writer_Ptr map = open_obj(root_id_);
-		map->tok_entry("/Type", "/Catalog");
-		map->obj_entry("/Pages", pages);
-	}
-	close_obj();
-	int page = reserve_obj();
-	{
-		Map_Writer_Ptr map = open_obj(pages);
-		map->tok_entry("/Type", "/Pages");
-		map->int_entry("/Count", 1);
+		Obj_Writer_Ptr obj = open_obj(root_id_);
 		{
-			List_Writer_Ptr lst { map->open_list_entry("/Kids") };
-			lst->obj_entry(page);
+			Map_Writer_Ptr map = obj->open_dict();
+			map->tok_entry("/Type", "/Catalog");
+			map->obj_entry("/Pages", pages);
 		}
 	}
-	close_obj();
+	int page = reserve_obj();
+	{
+		Obj_Writer_Ptr obj = open_obj(pages);
+		{
+			Map_Writer_Ptr map = obj->open_dict();
+			map->tok_entry("/Type", "/Pages");
+			map->int_entry("/Count", 1);
+			{
+				List_Writer_Ptr lst { map->open_list_entry("/Kids") };
+				lst->obj_entry(page);
+			}
+		}
+	}
 	int font_id = reserve_obj();
 	int content_id = reserve_obj();
 	{
-		Map_Writer_Ptr map = open_obj(page);
-		map->tok_entry("/Type", "/Page");
-		map->obj_entry("/Parent", pages);
+		Obj_Writer_Ptr obj = open_obj(page);
 		{
-			List_Writer_Ptr lst { map->open_list_entry("/MediaBox") };
-			lst->int_entry(0);
-			lst->int_entry(0);
-			lst->int_entry(612);
-			lst->int_entry(792);
-		}
-		{
-			Map_Writer_Ptr resources = map->open_dict_entry("/Resources");
+			Map_Writer_Ptr map = obj->open_dict();
+			map->tok_entry("/Type", "/Page");
+			map->obj_entry("/Parent", pages);
 			{
-				Map_Writer_Ptr font = resources->open_dict_entry("/Font");
-				font->obj_entry("/F0", font_id);
+				List_Writer_Ptr lst { map->open_list_entry("/MediaBox") };
+				lst->int_entry(0);
+				lst->int_entry(0);
+				lst->int_entry(612);
+				lst->int_entry(792);
 			}
+			{
+				Map_Writer_Ptr resources = map->open_dict_entry("/Resources");
+				{
+					Map_Writer_Ptr font = resources->open_dict_entry("/Font");
+					font->obj_entry("/F0", font_id);
+				}
+			}
+			map->obj_entry("/Contents", content_id);
 		}
-		map->obj_entry("/Contents", content_id);
 	}
-	close_obj();
 	{
-		Map_Writer_Ptr map = open_obj(font_id);
-		map->tok_entry("/Type", "/Font");
-		map->tok_entry("/Subtype", "/Type1");
-		map->tok_entry("/BaseFont", "/TimesRoman");
+		Obj_Writer_Ptr obj = open_obj(font_id);
+		{
+			Map_Writer_Ptr map = obj->open_dict();
+			map->tok_entry("/Type", "/Font");
+			map->tok_entry("/Subtype", "/Type1");
+			map->tok_entry("/BaseFont", "/TimesRoman");
+		}
 	}
-	close_obj();
+
 	{
-		Map_Writer_Ptr map = open_obj(content_id);
-		open_stream(std::move(map));
+		content_ = open_obj(content_id);
+		Map_Writer_Ptr map { content_->open_dict() };
+		content_->open_stream(std::move(map));
 	}
 	write_line("BT");
 	write_line("    /F0 12 Tf");
@@ -199,8 +208,7 @@ Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 
 Pdf_Writer::~Pdf_Writer() {
 	write_line("ET");
-	close_obj();
-	assert(obj_id_ == -1);
+	content_.reset();
 	int xref { position_ };
 	write_line("xref");
 	{

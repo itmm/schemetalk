@@ -39,21 +39,34 @@ public:
 	void obj_entry(int id);
 };
 
+class Obj_Writer {
+	Pdf_Writer *root_;
+	int stream_start_ { -1 };
+	int stream_length_id_ { -1 };
+public:
+	explicit Obj_Writer(int id, Pdf_Writer *root);
+	~Obj_Writer();
+
+	Map_Writer_Ptr open_dict();
+	void open_stream(Map_Writer_Ptr map);
+};
+
+using Obj_Writer_Ptr = std::unique_ptr<Obj_Writer>;
+
 class Pdf_Writer {
 	std::ostream &out_;
 	int position_ { 0 };
 	int next_obj_ { 1 };
 	std::map<int, int> obj_poss_;
-	int obj_id_ { -1 };
 	int root_id_ { -1 };
-	int stream_start_ { -1 };
-	int stream_length_id_ { -1 };
+	Obj_Writer_Ptr content_;
 
 	Map_Writer_Ptr open_dict_();
-	void open_plain_obj_(int id);
 public:
 	explicit Pdf_Writer(std::ostream &out);
 	~Pdf_Writer();
+
+	[[nodiscard]] int position() const { return position_; }
 
 	void append_to_line(const std::string &line);
 	void write_line(const std::string &line);
@@ -62,9 +75,7 @@ public:
 
 	void write_log(const std::string &line);
 
-	Map_Writer_Ptr open_obj(int id);
-	void close_obj();
-	void open_stream(Map_Writer_Ptr map);
+	Obj_Writer_Ptr open_obj(int id);
 };
 
 void add_pdf_commands(const Node_Ptr &state);
