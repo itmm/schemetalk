@@ -3,6 +3,7 @@
 #include <iomanip>
 
 #include "pdf.h"
+#include "err.h"
 
 void Pdf_Writer::write_line(const std::string &line) {
 	position_ += static_cast<int>(line.length()) + 1;
@@ -10,38 +11,57 @@ void Pdf_Writer::write_line(const std::string &line) {
 }
 
 void Pdf_Writer::open_dict_() {
-	assert(! in_dict_);
+	assert(in_dict_ <= 0);
 	write_line("  <<");
-	in_dict_ = true;
+	++in_dict_;
 }
 
 void Pdf_Writer::close_dict_() {
-	assert(in_dict_);
+	assert(in_dict_ > 0);
 	write_line("  >>");
-	in_dict_ = false;
+	--in_dict_;
 }
 
-void Pdf_Writer::open_obj(int id) {
+void Pdf_Writer::open_plain_obj_(int id) {
 	assert(obj_id_ == -1);
-	assert(! in_dict_);
+	assert(in_dict_ <= 0);
 	assert(! obj_poss_[id]);
 	obj_poss_[id] = position_;
 	obj_id_ = id;
 	std::ostringstream line;
 	line << id << " 0 obj";
 	write_line(line.str());
+}
+
+void Pdf_Writer::open_obj(int id) {
+	open_plain_obj_(id);
 	open_dict_();
 }
 
 void Pdf_Writer::close_obj() {
 	assert(obj_id_ > 0);
-	if (in_dict_) { close_dict_(); }
+	if (in_dict_ > 0) { close_dict_(); }
+	if (in_dict_ > 0) { err("too many open dicts in object"); }
+	int stream_length = position_ - stream_start_;
+	if (stream_start_ > 0) {
+		write_line("endstream");
+		stream_start_ = -1;
+	}
 	write_line("endobj");
 	obj_id_ = -1;
+	if (stream_length_id_ > 0) {
+		int id { stream_length_id_ };
+		stream_length_id_ = -1;
+		open_plain_obj_(id);
+		std::ostringstream line;
+		line << "    " << stream_length;
+		write_line(line.str());
+		close_obj();
+	}
 }
 
 void Pdf_Writer::int_entry(const std::string &name, int value) {
-	assert(in_dict_);
+	assert(in_dict_ > 0);
 	assert(! name.empty() && name[0] == '/');
 	std::ostringstream line;
 	line << "    " << name << ' ' << value;
@@ -49,7 +69,7 @@ void Pdf_Writer::int_entry(const std::string &name, int value) {
 }
 
 void Pdf_Writer::tok_entry(const std::string &name, const std::string &tok) {
-	assert(in_dict_);
+	assert(in_dict_ > 0);
 	assert(! name.empty() && name[0] == '/');
 	assert(! tok.empty() && tok[0] == '/');
 	std::ostringstream line;
@@ -58,7 +78,7 @@ void Pdf_Writer::tok_entry(const std::string &name, const std::string &tok) {
 }
 
 void Pdf_Writer::obj_entry(const std::string &name, int id) {
-	assert(in_dict_);
+	assert(in_dict_ > 0);
 	assert(! name.empty() && name[0] == '/');
 	assert(id > 0 && id < next_obj_);
 	std::ostringstream line;
@@ -67,7 +87,7 @@ void Pdf_Writer::obj_entry(const std::string &name, int id) {
 }
 
 void Pdf_Writer::obj_list_entry(const std::string &name, const std::vector<int> &ids) {
-	assert(in_dict_);
+	assert(in_dict_ > 0);
 	assert(! name.empty() && name[0] == '/');
 	std::ostringstream line;
 	line << "    " << name << " [";
@@ -79,7 +99,7 @@ void Pdf_Writer::obj_list_entry(const std::string &name, const std::vector<int> 
 }
 
 void Pdf_Writer::int_list_entry(const std::string &name, const std::vector<int> &ints) {
-	assert(in_dict_);
+	assert(in_dict_ > 0);
 	assert(! name.empty() && name[0] == '/');
 	std::ostringstream line;
 	line << "    " << name << " [";
@@ -88,6 +108,25 @@ void Pdf_Writer::int_list_entry(const std::string &name, const std::vector<int> 
 	}
 	line << " ]";
 	write_line(line.str());
+}
+
+void Pdf_Writer::open_dict_entry(const std::string &name) {
+	assert(in_dict_ > 0);
+	assert(! name.empty() && name[0] == '/');
+	write_line(name + " <<");
+	++in_dict_;
+}
+
+void Pdf_Writer::open_stream() {
+	assert(obj_id_ > 0);
+	assert(in_dict_ == 1);
+	assert(stream_length_id_ < 0);
+	assert(stream_start_ < 0);
+	stream_length_id_ = reserve_obj();
+	obj_entry("/Length", stream_length_id_);
+	close_dict_();
+	write_line("stream");
+	stream_start_ = position_;
 }
 
 Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
@@ -108,10 +147,31 @@ Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 	tok_entry("/Type", "/Page");
 	obj_entry("/Parent", pages);
 	int_list_entry("/MediaBox", { 0, 0, 612, 792 });
+	open_dict_entry("/Resources");
+	open_dict_entry("/Font");
+	int font_id = reserve_obj();
+	obj_entry("/F0", font_id);
+	close_dict_();
+	close_dict_();
+	int content_id = reserve_obj();
+	obj_entry("/Contents", content_id);
 	close_obj();
+	open_obj(font_id);
+	tok_entry("/Type", "/Font");
+	tok_entry("/Subtype", "/Type1");
+	tok_entry("/BaseFont", "/TimesRoman");
+	close_obj();
+	open_obj(content_id);
+	open_stream();
+	write_line("BT");
+	write_line("    /F0 12 Tf");
+	write_line("    72 720 Td");
+	write_line("    14 TL");
 }
 
 Pdf_Writer::~Pdf_Writer() {
+	write_line("ET");
+	close_obj();
 	assert(obj_id_ == -1);
 	assert(! in_dict_);
 	int xref { position_ };

@@ -35,13 +35,9 @@ int main() {
 				was_space = true;
 				continue;
 			}
-			if (was_space) {
-				if (line.length() > 60) {
-					writer.write_log(line);
-					line = "";
-				} else {
-					line += " ";
-				}
+			if (was_space && ! line.empty()) {
+				writer.write_log(line);
+				line = "";
 			}
 			std::ostringstream out;
 			out << node;
