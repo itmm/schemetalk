@@ -41,7 +41,7 @@ public:
 
 class Obj_Writer {
 	Pdf_Writer *root_;
-	int stream_start_ { -1 };
+	std::ostream::pos_type stream_start_ { -1 };
 	int stream_length_id_ { -1 };
 public:
 	explicit Obj_Writer(int id, Pdf_Writer *root);
@@ -55,27 +55,31 @@ using Obj_Writer_Ptr = std::unique_ptr<Obj_Writer>;
 
 class Pdf_Writer {
 	std::ostream &out_;
-	int position_ { 0 };
 	int next_obj_ { 1 };
-	std::map<int, int> obj_poss_;
+	std::map<int, std::ostream::pos_type> obj_poss_;
 	int root_id_ { -1 };
 	Obj_Writer_Ptr content_;
 
 	Map_Writer_Ptr open_dict_();
+	void write_header();
+	void write_trailer();
+	void write_xref();
+	void write_trailer_dict();
 public:
 	explicit Pdf_Writer(std::ostream &out);
 	~Pdf_Writer();
 
-	[[nodiscard]] int position() const { return position_; }
+	[[nodiscard]] auto position() const { return out_.tellp(); }
 
-	void append_to_line(const std::string &line);
-	void write_line(const std::string &line);
+	template<typename T>
+	std::ostream &operator<<(T any) { return out_ << any; }
 
 	[[nodiscard]] int reserve_obj() { return next_obj_++; }
 
 	void write_log(const std::string &line);
 
 	Obj_Writer_Ptr open_obj(int id);
+
 };
 
 void add_pdf_commands(const Node_Ptr &state);

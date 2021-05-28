@@ -14,30 +14,19 @@
 #include "token.h"
 
 Map_Writer::Map_Writer(Pdf_Writer *root): root_ { root } {
-	root_->write_line("\t<<");
+	*root_ << "\t<<\n";
 }
 
 Map_Writer::~Map_Writer() {
-	root_->write_line("\t>>");
+	*root_ << "\t>>\n";
 }
 
 List_Writer::List_Writer(Pdf_Writer *root): root_ { root } {
-	root_->append_to_line("[ ");
+	*root_ << "[ ";
 }
 
 List_Writer::~List_Writer() {
-	root_->write_line(" ]");
-}
-
-void Pdf_Writer::append_to_line(const std::string &line) {
-	position_ += static_cast<int>(line.length()) ;
-	out_ << line ;
-}
-
-void Pdf_Writer::write_line(const std::string &line) {
-	append_to_line(line);
-	++position_;
-	out_ << '\n';
+	*root_ << " ]\n";
 }
 
 Map_Writer_Ptr Pdf_Writer::open_dict_() {
@@ -45,79 +34,65 @@ Map_Writer_Ptr Pdf_Writer::open_dict_() {
 }
 
 Obj_Writer::Obj_Writer(int id, Pdf_Writer *root): root_ { root } {
-	std::ostringstream line;
-	line << id << " 0 obj";
-	root_->write_line(line.str());
+	*root_ << id << " 0 obj\n";
 }
 
 Obj_Writer_Ptr Pdf_Writer::open_obj(int id) {
 	assert(! obj_poss_[id]);
-	obj_poss_[id] = position_;
+	obj_poss_[id] = position();
 	return std::make_unique<Obj_Writer>(id, this);
 }
 
 Obj_Writer::~Obj_Writer() {
-	int stream_length = root_->position() - stream_start_;
+	auto stream_length = root_->position() - stream_start_;
 	if (stream_start_ > 0) {
-		root_->write_line("endstream");
+		*root_ << "endstream\n";
 		stream_start_ = -1;
 	}
-	root_->write_line("endobj");
+	*root_ << "endobj\n";
 	if (stream_length_id_ > 0) {
 		int id { stream_length_id_ };
 		stream_length_id_ = -1;
 		{
 			Obj_Writer_Ptr obj { root_->open_obj(id) };
-			std::ostringstream line;
-			line << "    " << stream_length;
-			root_->write_line(line.str());
+			*root_ << "    " << stream_length << '\n';
 		}
 	}
 }
 
 void Map_Writer::int_entry(const std::string &name, int value) {
 	assert(! name.empty() && name[0] == '/');
-	std::ostringstream line;
-	line << "    " << name << ' ' << value;
-	root_->write_line(line.str());
+	*root_ << "    " << name << ' ' << value << '\n';
 }
 
 void List_Writer::int_entry(int value) {
-	std::ostringstream line;
-	line << ' ' << value;
-	root_->append_to_line(line.str());
+	*root_ << ' ' << value;
 }
 
 void Map_Writer::tok_entry(const std::string &name, const std::string &tok) {
 	assert(! name.empty() && name[0] == '/');
 	assert(! tok.empty() && tok[0] == '/');
-	std::ostringstream line;
-	line << "    " << name << ' ' << tok;
-	root_->write_line(line.str());
+	*root_ << "    " << name << ' ' << tok << '\n';
 }
 
 void Map_Writer::obj_entry(const std::string &name, int id) {
 	assert(! name.empty() && name[0] == '/');
-	std::ostringstream line;
-	line << "    " << name << ' ' << id << " 0 R";
-	root_->write_line(line.str());
+	*root_ << "    " << name << ' ' << id << " 0 R\n";
 }
 
 void List_Writer::obj_entry(int id) {
-	std::ostringstream line;
-	line << ' ' << id << " 0 R";
-	root_->append_to_line(line.str());
+	*root_ << ' ' << id << " 0 R";
 }
 
 Map_Writer_Ptr Map_Writer::open_dict_entry(const std::string &name) {
 	assert(! name.empty() && name[0] == '/');
-	root_->append_to_line(name + " ");
+	*root_ << name << ' ';
 	return std::make_unique<Map_Writer>(root_);
 }
 
 List_Writer_Ptr Map_Writer::open_list_entry(const std::string &name) {
 	assert(! name.empty() && name[0] == '/');
-	root_->append_to_line(name + " ");
+	*root_ << name << ' ';
 	return std::make_unique<List_Writer>(root_);
 }
 
@@ -131,12 +106,16 @@ void Obj_Writer::open_stream(Map_Writer_Ptr map) {
 	stream_length_id_ = root_->reserve_obj();
 	map->obj_entry("/Length", stream_length_id_);
 	map.reset();
-	root_->write_line("stream");
+	*root_ << "stream\n";
 	stream_start_ = root_->position();
 }
 
+void Pdf_Writer::write_header() {
+	out_ << "%PDF-1.4\n";
+}
+
 Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
-	write_line("%PDF-1.4");
+	write_header();
 	root_id_ = reserve_obj();
 	int pages = reserve_obj();
 	{
@@ -200,62 +179,60 @@ Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 		Map_Writer_Ptr map { content_->open_dict() };
 		content_->open_stream(std::move(map));
 	}
-	write_line("BT");
-	write_line("    /F0 12 Tf");
-	write_line("    72 720 Td");
-	write_line("    14 TL");
+	out_ << "BT\n";
+	out_ << "    /F0 12 Tf\n";
+	out_ << "    72 720 Td\n";
+	out_ << "    14 TL\n";
 }
 
 Pdf_Writer::~Pdf_Writer() {
-	write_line("ET");
+	out_ << "ET\n";
 	content_.reset();
-	int xref { position_ };
-	write_line("xref");
-	{
-		std::ostringstream line;
-		line << "0 " << next_obj_;
-		write_line(line.str());
-	}
-	write_line("0000000000 65535 f ");
+	write_trailer();
+}
+
+void Pdf_Writer::write_xref() {
+	out_ << "xref\n";
+	out_ << "0 " << next_obj_ << '\n';
+	out_ << "0000000000 65535 f \n";
 	for (int i = 1; i < next_obj_; ++i) {
-		int pos { obj_poss_[i] };
+		auto pos { obj_poss_[i] };
 		if (pos) {
-			std::ostringstream line;
-			line << std::setfill('0') << std::setw(10) << pos << ' ';
-			line << "00000 n ";
-			write_line(line.str());
+			out_ << std::setfill('0') << std::setw(10) << pos << ' ';
+			out_ << "00000 n \n";
 		} else { std::cerr << "no object for id " << i << "\n"; }
 	}
-	write_line("trailer");
-	{
-		Map_Writer_Ptr trailer = open_dict_();
-		trailer->int_entry("/Size", next_obj_);
-		if (root_id_ > 0) {
-			trailer->obj_entry("/Root", root_id_);
-		}
+}
+
+void Pdf_Writer::write_trailer_dict() {
+	Map_Writer_Ptr trailer = open_dict_();
+	trailer->int_entry("/Size", next_obj_);
+	if (root_id_ > 0) {
+		trailer->obj_entry("/Root", root_id_);
 	}
-	write_line("startxref");
-	{
-		std::ostringstream line;
-		line << xref;
-		write_line(line.str());
-	}
-	write_line("%%EOF");
+}
+
+void Pdf_Writer::write_trailer() {
+	auto xref { position() };
+	write_xref();
+	out_ << "trailer\n";
+	write_trailer_dict();
+	out_ << "startxref\n";
+	out_ << xref << '\n';
+	out_ << "%%EOF\n";
 }
 
 void Pdf_Writer::write_log(const std::string &line) {
-	std::ostringstream out;
-	out << "    (";
+	out_ << "    (";
 	for (char c : line) {
 		switch (c) {
 		case '(': case ')': case '\\':
-			out << '\\'; // fallthrough
+			out_ << '\\'; // fallthrough
 		default:
-			out << c;
+			out_ << c;
 		}
 	}
-	out << ") '";
-	write_line(out.str());
+	out_ << ") '\n";
 }
 
 class Pdf_Cmd: public Command {
