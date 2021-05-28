@@ -174,3 +174,54 @@ void Pdf_Writer::write_trailer() {
 }
 ```
 
+Hier sehen wir wieder einen ganz besonderen Kommentar `%%EOF` ganz am Ende
+der Datei.
+Davor kommt das Schlüsselwort `startxref` mit dem Start der Querverweise.
+Davor kommt das Schlüsselwort `trailer` mit einem Verzeichnis, das zum
+Beispiel auf das Start-Objekt zeigt.
+Davor kommen die Querverweise.
+
+Die Beschreibung vom Ende her zeigt genau das Vorgehen eines PDF-Lesers.
+Sobald er anhand des Headers erkennt,
+dass es sich um ein gültiges PDF-Dokument handelt,
+springt er ganz an das Ende der Datei.
+Dort findet er den speziellen Kommentar als Ende-Markierung 
+und davor die Position, ab der die Querverweise liegen.
+Er springt an die Stelle mit den Querverweisen und liest diese
+sowie das nachfolgende Verzeichnis.
+
+Dieses Vorgehen erleichtert das Generieren von PDF-Dateien.
+Anstatt schon im Header anzugeben wo das Haupt-Objekt steht,
+muss dies erst am Ende geschehen.
+Wenn während des Schreibens das Haupt-Objekt geschrieben wird,
+muss nur die aktuelle Position festgehalten werden.
+Die Dokumente können so in einem Durchlauf geschrieben werden.
+Das wird für uns das Erstellen eines PDF-Dokuments merklich vereinfachen.
+
+Wenn wir die Aufrufe von noch nicht vorhandenen Methoden auskommentieren
+(damit das Programm kompiliert) können wir mit der folgenden Datei `main.cpp`
+ein vollständiges Programm erstellen:
+
+```c++
+#include "pdf.h"
+#include <iostream>
+
+int main() {
+	Pdf_Writer writer(std::cout);
+}
+```
+
+Es produziert folgende Ausgabe:
+
+```
+%PDF-1.4
+trailer
+startxref
+9
+%%EOF
+```
+
+Das ist noch kein gültiges PDF-Dokument.
+Es fehlen die Querverweise und das Verzeichnis am Ende.
+Aber es ist schon mal ein Anfang,
+auf den wir aufbauen können.
