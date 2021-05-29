@@ -225,3 +225,52 @@ Das ist noch kein gültiges PDF-Dokument.
 Es fehlen die Querverweise und das Verzeichnis am Ende.
 Aber es ist schon mal ein Anfang,
 auf den wir aufbauen können.
+
+Kommen wir zuerst zu Objekten.
+Jedes Objekt besteht aus einer ID und einer Versions-Nummer.
+So ganz habe ich den Sinn der Versions-Nummer nicht verstanden.
+Wir werden stets dafür `0` nehmen.
+So müssen wir uns nur die ID merken.
+Dazu gibt es eine Tabelle im `Pdf_Writer`,
+welche sich diesen Zusammenhang merkt.
+Der Header `pdf.h` muss wie folgt angepasst werden:
+
+```c++
+// ...
+#include <map>
+class Pdf_Writer {
+	// ...
+	std::map<int, std::ostream::pos_type> obj_poss_;
+public:
+	// ...
+	void write_obj(int id);
+};
+```
+
+Und in der Implementierung `pdf.cpp` entsprechend:
+
+```c++
+// ...
+#include <cassert>
+
+void write_obj(int id) {
+	assert(! obj_poss_[id]);
+	obj_poss_[id] = position();
+}
+```
+
+Es wird dabei geprüft,
+ob das Objekt bereits geschrieben wurde.
+Ansonsten wird die aktuelle Position als Start-Position gespeichert.
+
+Die Querverweis-Tabelle enthält nun eine sortierte Liste aller Objekte
+zusammen mit deren Position in der Datei.
+Jeder Eintrag hat eine feste Länge.
+Die Zahlen werden entsprechend mit `0`-Ziffern aufgefüllt.
+
+Am Ende der Zeile ist ein Freizeichen!
+Wenn man als Zeilentrenner den Windows-Standard verwendet,
+werden zwei Byte für Newline und Carriage-Return verwendet.
+Da unter fast allen anderen Betriebssystemen dafür nur ein Newline reicht,
+sorgt das zusätzliche Freizeichen dafür,
+dass die Byte-Länge der Zeilen stimmt.
