@@ -62,7 +62,7 @@ public:
 	std::ostream &operator<<(T any) { return out_ << any; }
 
 	[[nodiscard]] int reserve_obj() { return next_obj_++; }
-	void register_obj(int id) {
+	void write_obj(int id) {
 		assert(! obj_poss_[id]);
 		obj_poss_[id] = position();
 	}

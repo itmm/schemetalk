@@ -30,7 +30,7 @@ List_Writer::~List_Writer() {
 }
 
 Obj_Writer::Obj_Writer(int id, Pdf_Writer *root): Sub_Writer { root, "    " } {
-	root->register_obj(id);
+	root->write_obj(id);
 	*root << id << " 0 obj\n";
 }
 
