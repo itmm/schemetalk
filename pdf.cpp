@@ -30,7 +30,7 @@ List_Writer::~List_Writer() {
 }
 
 Obj_Writer::Obj_Writer(int id, Pdf_Writer *root): Sub_Writer { root, "    " } {
-	root->write_obj(id);
+	root->define_obj(id);
 	*root << id << " 0 obj\n";
 }
 
@@ -54,7 +54,7 @@ Obj_Writer::~Obj_Writer() {
 void Obj_Writer::open_stream(std::unique_ptr<Map_Writer> map) {
 	assert(stream_length_id_ < 0);
 	assert(stream_start_ < 0);
-	stream_length_id_ = root()->reserve_obj();
+	stream_length_id_ = root()->reserve_obj_id();
 	*map << "/Length " << stream_length_id_ << " 0 R\n";
 	map.reset();
 	*root() << "stream\n";
@@ -67,8 +67,8 @@ void Pdf_Writer::write_header() {
 
 Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 	write_header();
-	root_id_ = reserve_obj();
-	int pages = reserve_obj();
+	root_id_ = reserve_obj_id();
+	int pages = reserve_obj_id();
 	{
 		Obj_Writer obj { root_id_, this };
 		{
@@ -77,7 +77,7 @@ Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 			map << "/Pages " << pages << " 0 R\n";
 		}
 	}
-	int page = reserve_obj();
+	int page = reserve_obj_id();
 	{
 		Obj_Writer obj { pages, this };
 		{
@@ -91,8 +91,8 @@ Pdf_Writer::Pdf_Writer(std::ostream &out): out_ { out } {
 			}
 		}
 	}
-	int font_id = reserve_obj();
-	int content_id = reserve_obj();
+	int font_id = reserve_obj_id();
+	int content_id = reserve_obj_id();
 	{
 		Obj_Writer obj { page, this };
 		{
@@ -148,20 +148,24 @@ Pdf_Writer::~Pdf_Writer() {
 
 void Pdf_Writer::write_xref() {
 	out_ << "xref\n";
-	out_ << "0 " << next_obj_ << '\n';
-	out_ << "0000000000 65535 f \n";
-	for (int i = 1; i < next_obj_; ++i) {
-		auto pos { obj_poss_[i] };
+	out_ << "0 " << (last_obj_id_ + 1) << '\n';
+	for (int i = 0; i <= last_obj_id_; ++i) {
+		auto pos { obj_positions_[i] };
 		if (pos) {
 			out_ << std::setfill('0') << std::setw(10) << pos << ' ';
 			out_ << "00000 n \n";
-		} else { std::cerr << "no object for id " << i << "\n"; }
+		} else {
+			out_ << "0000000000 65535 f \n";
+			if (pos > 0) {
+				std::cerr << "no object for id " << i << "\n";
+			}
+		}
 	}
 }
 
 void Pdf_Writer::write_trailer_dict() {
 	Map_Writer trailer { this };
-	trailer << "/Size " << next_obj_ << '\n';
+	trailer << "/Size " << (last_obj_id_ + 1) << '\n';
 	trailer << "/Root " << root_id_ << " 0 R\n";
 }
 
@@ -253,3 +257,8 @@ void add_pdf_commands(const Node_Ptr &state) {
 	s->push(std::make_shared<Pdf_Cmd>(), "pdf");
 }
 
+void Pdf_Writer::define_obj(int id) {
+	assert(id <= last_obj_id_);
+	assert(! obj_positions_[id]);
+	obj_positions_[id] = position();
+}

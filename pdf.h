@@ -43,8 +43,8 @@ public:
 
 class Pdf_Writer {
 	std::ostream &out_;
-	int next_obj_ { 1 };
-	std::map<int, std::ostream::pos_type> obj_poss_;
+	int last_obj_id_ { 0 };
+	std::map<int, std::ostream::pos_type> obj_positions_;
 	int root_id_ { -1 };
 	std::unique_ptr<Obj_Writer> content_;
 
@@ -61,11 +61,8 @@ public:
 	template<typename T>
 	std::ostream &operator<<(T any) { return out_ << any; }
 
-	[[nodiscard]] int reserve_obj() { return next_obj_++; }
-	void write_obj(int id) {
-		assert(! obj_poss_[id]);
-		obj_poss_[id] = position();
-	}
+	[[nodiscard]] int reserve_obj_id() { return ++last_obj_id_; }
+	void define_obj(int id);
 
 	void write_log(const std::string &line);
 };
