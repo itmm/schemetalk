@@ -112,8 +112,10 @@ Der Header `pdf.h` kann wie folgt aussehen:
 
 class Pdf_Writer {
 	std::ostream &out_;
+	int position_ { 0 };
 	void write_header();
 	void write_trailer();
+	void write(const std::string &str);
 public:
 	explicit Pdf_Writer(std::ostream &out);
 	~Pdf_Writer();
@@ -135,8 +137,12 @@ Pdf_Writer::~Pdf_Writer() {
 	write_trailer();
 }
 
+void Pdf_Writer::write(const std::string &str) {
+	out_ << str;
+	position_ += str.size();
+}
 void Pdf_Writer::write_header() {
-	out_ << "%PDF-1.4\n";
+	write("%PDF-1.4\n");
 }
 ```
 
@@ -151,36 +157,43 @@ der angibt wo das Haupt-Objekt zu finden ist.
 Zum Schluss wird angegeben, wo die Tabelle mit den Querverweisen
 startet.
 
-Zuerst brauchen wir eine Methode, die uns die aktuelle
-Datei-Position zurückliefert.
-In `pdf.h` können wir die Funktion `position` ergänzen:
+Zuerst brauchen wir eine Methode `position` in `pdf.h`, die uns die aktuelle
+Datei-Position zurückliefert:
 
 ```c++
 // ...
 class Pdf_Writer {
-	// ...
 	void write_xref();
 	void write_trailer_dict();
+	void write(int value, int min_size = 1);
+// ...
 public:
-	// ...
-	[[nondiscard]] auto position() const {
-		return out_.tellp();
+	[[nodiscard]] auto position() const {
+		return position_;
 	}
-}
+	// ...
+};
 ```
 
 Damit kann dann die Trailer-Implementierung in `pdf.cpp` ganz
 abstrakt so aussehen:
 
 ```c++
+// ...
+void Pdf_Writer::write(int value, int min_size) {
+	std::string vs { std::to_string(value) };
+	while (vs.size() < min_size) { vs = '0' + vs; }
+	write(vs);
+}
+
 void Pdf_Writer::write_trailer() {
-	auto xref { position() };
+	int xref { position() };
 	write_xref();
-	out_ << "trailer\n";
+	write("trailer\n");
 	write_trailer_dict();
-	out_ << "startxref\n";
-	out_ << xref << '\n';
-	out_ << "%%EOF\n";
+	write("startxref\n");
+	write(xref);
+	write("\n%%EOF\n");
 }
 ```
 
@@ -265,13 +278,13 @@ Die Datei `pdf.h` muss dazu wie folgt ergänzt werden:
 ```c++
 // ...
 class Pdf_Writer {
+	int last_obj_id_ { 0 };
 	// ...
-	int _last_obj_id { 0 };
 public:
-	// ...
 	int reserve_obj_id() {
-		return ++_last_obj_id;
+		return ++last_obj_id_;
 	}
+	// ...
 };
 ```
 
@@ -281,14 +294,15 @@ an der es definiert wurde.
 Der Header `pdf.h` muss wie folgt angepasst werden:
 
 ```c++
-// ...
+#pragma once
 #include <map>
+// ...
 class Pdf_Writer {
+	std::map<int, int> obj_positions_;
 	// ...
-	std::map<int, std::ostream::pos_type> obj_positions_;
 public:
-	// ...
 	void define_obj(int id);
+	// ...
 };
 ```
 
@@ -299,7 +313,7 @@ Und in der Implementierung `pdf.cpp` entsprechend:
 #include <cassert>
 
 void Pdf_Writer::define_obj(int id) {
-	assert(id <= _last_obj_id);
+	assert(id <= last_obj_id_);
 	assert(! obj_positions_[id]);
 	obj_positions_[id] = position();
 }
@@ -338,23 +352,23 @@ in der Datei `pdf.cpp`:
 
 ```c++
 // ...
+#include <iostream>
+
 void Pdf_Writer::write_xref() {
-    out_ << "xref\n";
-    out_ << "0 " << (last_obj_id_ + 1) << '\n';
-    for (int i = 0; i <= last_obj_id_; ++i) {
-        auto pos { obj_positions_[i] };
-        if (pos) {
-            out_ << std::setfill('0') <<
-                std::setw(10) << pos << 
-                " 00000 n \n";
-        } else {
-            out_ << "0000000000 65535 f \n";
-            if (pos > 0) {
-                std::cerr << "no object for id " <<
-                    i << "\n";
-            }
-        }
-    }
+	write("xref\n");
+	write("0 "); write(last_obj_id_ + 1); write("\n");
+	for (int i = 0; i <= last_obj_id_; ++i) {
+		auto pos { obj_positions_[i] };
+		if (pos) {
+			write(pos, 10); write(" 00000 n \n");
+		} else {
+			write("0000000000 65535 f \n");
+			if (i > 0) {
+				std::cerr << "no object for id " <<
+					i << "\n";
+			}
+		}
+	}
 }
 ```
 
@@ -380,20 +394,26 @@ Aber bevor dieser implementiert werden kann,
 muss zuerst einmal eine Möglichkeit bestehen,
 von außen in den `Pdf_Writer` zu schreiben.
 Dies erreichen wir durch die Implementierung des `<<`
-Operators ind `pdf.h`:
+Operators in `pdf.h`:
 
 ```c++
 // ...
 class Pdf_Writer {
-// ...
+	// ...
 public:
-    template<typename T> std::ostream &operator<<(T any);
+	Pdf_Writer &operator<<(const std::string &str);
+	Pdf_Writer &operator<<(int value);
+	// ...
 };
 // ...
-template<typename T> inline
-    std::ostream &operator<<(T any) {
-    	return out_ << any;
-    }
+inline Pdf_Writer &Pdf_Writer::operator<<(const std::string &str) {
+	write(str);
+	return *this;
+}
+inline Pdf_Writer &Pdf_Writer::operator<<(int value) {
+	write(value);
+	return *this;
+}
 ```
 
 Damit kann der `Pdf_Writer` wie ein `std::ostream` verwendet
@@ -407,24 +427,24 @@ Es wird auch in `pdf.h` definiert:
 ```c++
 // ...
 class Sub_Writer {
-    Pdf_Writer *root_;
-    std::string prefix_;
+	Pdf_Writer *root_;
+	std::string prefix_;
 public:
-    [[nodiscard]] Pdf_Writer *root() const { return root_; }
-    explicit Sub_Writer(Pdf_Writer *root, std::string prefix);
-    template<typename T> std::ostream &operator<<(T any);
+	[[nodiscard]] Pdf_Writer *root() const { return root_; }
+	explicit Sub_Writer(Pdf_Writer *root, std::string prefix);
+	template<typename T> Pdf_Writer &operator<<(T any);
 };
 
 inline Sub_Writer::Sub_Writer(
 	Pdf_Writer *root, std::string prefix
 ):
-    root_ { root }, prefix_ { std::move( prefix ) }
+	root_ { root }, prefix_ { std::move( prefix ) }
 { }
 
 template<typename T> inline
-    std::ostream &Sub_Writer::operator<<(T any) {
-        return *root_ << prefix_ << any;
-    }
+	Pdf_Writer &Sub_Writer::operator<<(T any) {
+		return *root_ << prefix_ << any;
+	}
 ```
 
 Damit kann der `Map_Writer` implementiert werden.
@@ -437,8 +457,8 @@ Die Klasse kann in `pdf.h` deklariert werden:
 // ...
 class Map_Writer: public Sub_Writer {
 public:
-explicit Map_Writer(Pdf_Writer *root);
-~Map_Writer();
+	explicit Map_Writer(Pdf_Writer *root);
+	~Map_Writer();
 };
 ```
 
@@ -447,13 +467,13 @@ Die Implementierung der Methoden erfolgt in `pdf.cpp`:
 ```c++
 // ...
 Map_Writer::Map_Writer(Pdf_Writer *root):
-    Sub_Writer { root, "    " }
+	Sub_Writer { root, "    " }
 {
-    *root << "  <<\n";
+	*root << "  <<\n";
 }
 
 Map_Writer::~Map_Writer() {
-    *root() << "  >>\n";
+	*root() << "  >>\n";
 }
 ```
 
@@ -463,14 +483,14 @@ Es enthält nur zwei Einträge:
 * eine Referenz auf das Haupt-Objekt (das wir noch definieren müssen) und
 * die Anzahl der Elemente in der Querverweis-Tabelle.
 
-In `pdf.h` gibt es im `Pdf_Writer` ein neues Attribut mit dem
+Im `Pdf_Writer` in `pdf.h` gibt es ein neues Attribut mit dem
 Haupt-Objekt:
 
 ```c++
 // ...
 class Pdf_Writer {
+	int root_id_ { 0 };
 	// ...
-	int root_id { 0 };
 public:
 	// ...
 };
@@ -483,9 +503,9 @@ geschrieben werden:
 ```c++
 // ...
 void Pdf_Writer::write_trailer_dict() {
-    Map_Writer trailer { this };
-    trailer << "/Size " << (last_obj_id_ + 1) << '\n';
-    trailer << "/Root " << root_id_ << " 0 R\n";
+	Map_Writer trailer { this };
+	trailer << "/Size " << (last_obj_id_ + 1) << "\n";
+	trailer << "/Root " << root_id_ << " 0 R\n";
 }
 ```
 
