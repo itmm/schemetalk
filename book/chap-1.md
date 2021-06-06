@@ -113,14 +113,34 @@ Der Header `pdf.h` kann wie folgt aussehen:
 class Pdf_Writer {
 	std::ostream &out_;
 	int position_ { 0 };
+	void write(const std::string &str);
 	void write_header();
 	void write_trailer();
-	void write(const std::string &str);
 public:
 	explicit Pdf_Writer(std::ostream &out);
 	~Pdf_Writer();
 };
 ```
+
+Leider müssen wir uns die Anzahl der aktuelle geschriebenen
+Bytes selber merken.
+Zwar hat `std::ostream` die Methode `tellp`,
+die jedoch stets `-1` liefert,
+wenn die Ausgabe nicht in eine Datei umgeleitet wird.
+Die Idee dahinter hängt mit der Methode `seekp` zusammen:
+`tellp` liefert nur dann eine Position,
+wenn man auch mit `seekp` wieder dahin springen kann.
+Das funktioniert aber nur bei bidirektionalen Streams,
+wie zum Beispiel Dateien.
+
+Das macht die Implementierung etwas umständlicher.
+Die `write` Methode gibt eine Zeichenkette aus
+und aktualisiert dabei die `position_`.
+Alle Ausgaben nach `out_` müssen über diese Methode laufen
+(sonst passt die Position nicht mehr).
+Lediglich am Ende können wir mogeln,
+wenn wir sicher sind,
+dass die aktuelle Position nicht mehr benötigt wird.
 
 Und die passende Implementierung `pdf.cpp`:
 
@@ -141,6 +161,7 @@ void Pdf_Writer::write(const std::string &str) {
 	out_ << str;
 	position_ += str.size();
 }
+
 void Pdf_Writer::write_header() {
 	write("%PDF-1.4\n");
 }
@@ -157,15 +178,14 @@ der angibt wo das Haupt-Objekt zu finden ist.
 Zum Schluss wird angegeben, wo die Tabelle mit den Querverweisen
 startet.
 
-Zuerst brauchen wir eine Methode `position` in `pdf.h`, die uns die aktuelle
-Datei-Position zurückliefert:
+Zuerst brauchen wir eine Methode `position` in `pdf.h`, die uns
+die aktuelle Datei-Position zurückliefert:
 
 ```c++
 // ...
 class Pdf_Writer {
 	void write_xref();
 	void write_trailer_dict();
-	void write(int value, int min_size = 1);
 // ...
 public:
 	[[nodiscard]] auto position() const {
@@ -180,22 +200,27 @@ abstrakt so aussehen:
 
 ```c++
 // ...
-void Pdf_Writer::write(int value, int min_size) {
-	std::string vs { std::to_string(value) };
-	while (vs.size() < min_size) { vs = '0' + vs; }
-	write(vs);
-}
-
 void Pdf_Writer::write_trailer() {
 	int xref { position() };
 	write_xref();
-	write("trailer\n");
+	out_ << "trailer\n";
 	write_trailer_dict();
-	write("startxref\n");
-	write(xref);
-	write("\n%%EOF\n");
+	out_ << "startxref\n";
+	out_ << xref << '\n';
+	out_ << "%%EOF\n";
 }
 ```
+
+Ab der Definition von `xref` können wir wieder direkt in
+`out_` schreiben.
+Das war der letzte Zugriff auf die `position`.
+Das hat nicht nur ästhetische Vorteile.
+Neben der Ausgabe von Zahlen
+(die wir später auch noch brauchen),
+müssen Zahlen auch auf eine bestimmte Breite aufgefüllt werden.
+Es ist natürlich angenehmer,
+hier die im `std::ostream` vorhandene Funktionalität zu nutzen,
+anstatt diese nachzubauen.
 
 Hier sehen wir wieder einen ganz besonderen Kommentar `%%EOF`
 ganz am Ende der Datei.
@@ -353,16 +378,18 @@ in der Datei `pdf.cpp`:
 ```c++
 // ...
 #include <iostream>
+#include <iomanip>
 
 void Pdf_Writer::write_xref() {
-	write("xref\n");
-	write("0 "); write(last_obj_id_ + 1); write("\n");
+	out_ << "xref\n";
+	out_ << "0 " << (last_obj_id_ + 1) << '\n';
 	for (int i = 0; i <= last_obj_id_; ++i) {
 		auto pos { obj_positions_[i] };
 		if (pos) {
-			write(pos, 10); write(" 00000 n \n");
+			out_ << std::setfill('0') << std::setw(10) <<
+				pos << " 00000 n \n";
 		} else {
-			write("0000000000 65535 f \n");
+			out_ << "0000000000 65535 f \n";
 			if (i > 0) {
 				std::cerr << "no object for id " <<
 					i << "\n";
@@ -403,6 +430,7 @@ class Pdf_Writer {
 public:
 	Pdf_Writer &operator<<(const std::string &str);
 	Pdf_Writer &operator<<(int value);
+	Pdf_Writer &operator<<(char ch);
 	// ...
 };
 // ...
@@ -410,14 +438,33 @@ inline Pdf_Writer &Pdf_Writer::operator<<(const std::string &str) {
 	write(str);
 	return *this;
 }
+
 inline Pdf_Writer &Pdf_Writer::operator<<(int value) {
-	write(value);
+	write(std::to_string(value));
+	return *this;
+}
+
+inline Pdf_Writer &Pdf_Writer::operator<<(char ch) {
+	out_ << ch;
+	++position_;
 	return *this;
 }
 ```
 
-Damit kann der `Pdf_Writer` wie ein `std::ostream` verwendet
-werden.
+Damit kann der `Pdf_Writer` ähnlich wie ein `std::ostream`
+verwendet werden.
+Wir beschränken uns jedoch auf die Typen,
+die wirklich benötigt werden:
+
+* Zeichenketten,
+* Zahlen und
+* Zeichen.
+
+Wichtig ist dabei,
+dass wir entweder `write` aufrufen,
+oder genau wissen,
+wie viele Zeichen ausgegeben werden.
+Nur so kann `position_` vernünftig aktualisiert werden.
 
 Der `Sub_Writer` merkt sich den `Pdf_Writer` und zusätzlich
 noch ein Präfix,
@@ -504,7 +551,7 @@ geschrieben werden:
 // ...
 void Pdf_Writer::write_trailer_dict() {
 	Map_Writer trailer { this };
-	trailer << "/Size " << (last_obj_id_ + 1) << "\n";
+	trailer << "/Size " << (last_obj_id_ + 1) << '\n';
 	trailer << "/Root " << root_id_ << " 0 R\n";
 }
 ```
@@ -517,3 +564,25 @@ so besteht er aus drei Teilen:
 * der Objekt-ID,
 * der Objekt-Version und
 * dem Token `R`.
+
+Aktuell würden wir folgende Ausgabe produzieren:
+
+```
+%PDF-1.4
+xref
+0 1
+0000000000 65535 f 
+trailer
+  <<
+    /Size 1
+    /Root 0 0 R
+  >>
+startxref
+9
+%%EOF
+```
+
+Das wär schon fast ein gültiges PDF-Dokument.
+Es hat _nur_ das Problem,
+dass die Wurzel auf ein gelöschtes Objekt verweist
+(das dazu noch die ungültige ID 0 hat).

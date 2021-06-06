@@ -8,15 +8,15 @@ class Pdf_Writer {
 	int last_obj_id_ { 0 };
 	void write_xref();
 	void write_trailer_dict();
-	void write(int value, int min_size = 1);
 	std::ostream &out_;
 	int position_ { 0 };
+	void write(const std::string &str);
 	void write_header();
 	void write_trailer();
-	void write(const std::string &str);
 public:
 	Pdf_Writer &operator<<(const std::string &str);
 	Pdf_Writer &operator<<(int value);
+	Pdf_Writer &operator<<(char ch);
 	void define_obj(int id);
 	int reserve_obj_id() {
 		return ++last_obj_id_;
@@ -31,8 +31,15 @@ inline Pdf_Writer &Pdf_Writer::operator<<(const std::string &str) {
 	write(str);
 	return *this;
 }
+
 inline Pdf_Writer &Pdf_Writer::operator<<(int value) {
-	write(value);
+	write(std::to_string(value));
+	return *this;
+}
+
+inline Pdf_Writer &Pdf_Writer::operator<<(char ch) {
+	out_ << ch;
+	++position_;
 	return *this;
 }
 class Sub_Writer {
