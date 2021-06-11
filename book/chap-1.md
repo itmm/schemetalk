@@ -159,7 +159,12 @@ using Node_Ptr = std::shared_ptr<Node>;
 class Node {
 public:
 	virtual ~Node() = default;
+	virtual Node_Ptr eval(Node_Ptr self, Node_Ptr state);
 };
+
+inline Node_Ptr Node::eval(Node_Ptr self, Node_Ptr state) {
+	return self;
+}
 ```
 
 `Node_Ptr` behält die Anzahl der Verweise auf eine Objekt
@@ -361,10 +366,97 @@ in `st.cpp`:
 #include "parser.h"
 // ...
 	std::ifstream source { source_path };
+	Node_Ptr state;
 	Node_Ptr got;
 	for (;;) {
 		source >> got;
 		if (! got) { break; }
+		got->eval(got, state);
 	}
 // ...
+```
+
+in `map.h`:
+
+```c++
+#pragma once
+#include "err.h"
+#include "node.h"
+#include <map>
+#include <string>
+
+class Map: public Node {
+	Node_Ptr parent_;
+	std::map<std::string, Node_Ptr> entries_;
+public:
+	explicit Map(Node_Ptr parent);
+	void insert(const std::string &key, Node_Ptr value);
+	Node_Ptr get(const std::string &key) const;
+	template<typename F> void each(const F& f) const;
+};
+
+inline Map::Map(Node_Ptr parent):
+	parent_ { parent}
+{ }
+
+inline void Map::insert(
+	const std::string &key, Node_Ptr value
+) {
+	entries_[key] = value;
+}
+
+inline Node_Ptr Map::get(const std::string &key) const {
+	auto got { entries_.find(key) };
+	if (got != entries_.end()) {
+		return got->second;
+	} else if (parent_) {
+		auto p { dynamic_cast<Map *>(parent_.get() )};
+		if (p) {
+			return p->get(key);
+		} else {
+			fail("invalid parent");
+		}
+	} else {
+		return Node_Ptr { };
+	}
+}
+
+template<typename F> inline void Map::each(const F& f) const {
+	if (parent_) {
+		auto p { dynamic_cast<Map *>(parent_.get() )};
+		if (p) {
+			p->each(f);
+		} else { fail("invaild parent"); }
+	}
+	for (const auto &entry : entries_) {
+		f(entry.first, entry.second);
+	}
+}
+```
+
+in `st.cpp`:
+
+```c++
+#include "map.h"
+// ...
+	Node_Ptr state;
+	state = std::make_shared<Map>(Node_Ptr { });
+// ...
+```
+
+in `token.h`:
+
+```c++
+#pragma once
+#include "map.h"
+// ...
+public:
+	Node_Ptr eval(Node_Ptr self, Node_Ptr state) override;
+// ...
+inline Node_Ptr Token::eval(Node_Ptr self, Node_Ptr state) {
+	auto s { dynamic_cast<Map *>(state.get()) };
+	if (! s) { fail("invalid state"); }
+	Node_Ptr result { s->get(value_) };
+	return result ? result : self;
+}
 ```
