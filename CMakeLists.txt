@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.17)
-project(xtx)
+project(st)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(xtx main.cpp node.cpp space.cpp token.cpp invocation.cpp
-    err.cpp read.cpp print.cpp eval.cpp map.cpp num.cpp arith.cpp cmd.cpp
-    dyn.cpp pair.cpp bool.cpp
-        pdf.cpp)
-include_directories(xtx .)
+add_custom_command(
+    COMMAND md_patcher < ${CMAKE_SOURCE_DIR}/book/chap-1.md
+    OUTPUT err.cpp err.h invocation.cpp invocation.h io.cpp io.h map.h node.h parser.cpp parser.h space.h st.cpp token.h
+)
+
+add_executable(st err.cpp invocation.cpp io.cpp parser.cpp st.cpp)
+include_directories(st .)
+

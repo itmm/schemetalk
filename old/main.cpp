@@ -2,8 +2,8 @@
 #include <sstream>
 #include <err.h>
 
-#include "arith.h"
-#include "bool.h"
+#include "old/arith.h"
+#include "old/bool.h"
 #include "map.h"
 #include "eval.h"
 #include "read.h"

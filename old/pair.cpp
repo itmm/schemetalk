@@ -6,7 +6,7 @@
 #include "invocation.h"
 #include "map.h"
 #include "token.h"
-#include "bool.h"
+#include "old/bool.h"
 
 const Pair *Pair::as_pair() const {
 	return this;
