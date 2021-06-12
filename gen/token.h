@@ -6,6 +6,7 @@
 class Token: public Node {
 	std::string value_;
 public:
+	void write(std::ostream &out) override;
 	Node_Ptr eval(Node_Ptr self, Node_Ptr state) override;
 	explicit Token(std::string value);
 	const std::string &value() const;
@@ -23,4 +24,7 @@ inline Node_Ptr Token::eval(Node_Ptr self, Node_Ptr state) {
 	if (! s) { fail("invalid state"); }
 	Node_Ptr result { s->get(value_) };
 	return result ? result : self;
+}
+inline void Token::write(std::ostream &out) {
+	out << value_;
 }

@@ -34,6 +34,7 @@ int_type read_node(
 				} else { fail("invalid node"); }
 			}
 		}
+		ch = in.get();
 	} else if (ch == ')') {
 		fail("unmatched ')'");
 	} else {

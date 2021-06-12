@@ -7,6 +7,7 @@ class Invocation: public Node {
 	using Container = std::vector<Node_Ptr>;
 	Container arguments_;
 public:
+	Node_Ptr eval(Node_Ptr self, Node_Ptr state) override;
 	explicit Invocation(Node_Ptr function);
 	const Node_Ptr &function() const;
 	void push_back(Node_Ptr argument);
@@ -19,10 +20,10 @@ inline Invocation::Invocation(Node_Ptr function):
 	function_ { function }
 { }
 
-const Node_Ptr &Invocation::function() const {
+inline const Node_Ptr &Invocation::function() const {
 	return function_;
 }
 
-void Invocation::push_back(Node_Ptr argument) {
+inline void Invocation::push_back(Node_Ptr argument) {
 	arguments_.push_back(argument);
 }
