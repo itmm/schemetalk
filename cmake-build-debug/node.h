@@ -25,3 +25,4 @@ inline std::ostream &operator<<(std::ostream &out, Node_Ptr node) {
 	return out;
 }
 extern Node_Ptr nil;
+void register_node_entries(Node_Ptr state);

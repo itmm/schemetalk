@@ -4,10 +4,11 @@ project(st)
 set(CMAKE_CXX_STANDARD 17)
 
 add_custom_command(
-    COMMAND md_patcher < ${CMAKE_SOURCE_DIR}/book/chap-1.md
-    OUTPUT err.cpp err.h invocation.cpp invocation.h io.cpp io.h map.h node.h parser.cpp parser.h space.h st.cpp token.h
+    COMMAND cat ${CMAKE_SOURCE_DIR}/chap-*.md | md_patcher
+    DEPENDS ${CMAKE_SOURCE_DIR}/chap-*.md
+    OUTPUT err.cpp err.h invocation.cpp invocation.h io.cpp io.h map.h node.cpp node.h parser.cpp parser.h space.h st.cpp token.h
 )
 
-add_executable(st err.cpp invocation.cpp io.cpp parser.cpp st.cpp)
+add_executable(st err.cpp invocation.cpp io.cpp node.cpp parser.cpp st.cpp)
 include_directories(st .)
 

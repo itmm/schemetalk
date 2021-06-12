@@ -638,3 +638,23 @@ in `st.cpp`:
 	register_io_entries(state);
 // ...
 ```
+
+in `node.h`:
+
+```c++
+// ...
+void register_node_entries(Node_Ptr state);
+```
+
+in `node.cpp`:
+
+```c++
+#include "node.h"
+#include "map.h"
+
+void register_node_entries(Node_Ptr state) {
+	auto s { dynamic_cast<Map *>(state.get()) };
+	if (! s) { fail("no state"); }
+	s->insert("nil", nil);
+}
+```
