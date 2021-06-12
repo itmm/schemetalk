@@ -20,6 +20,7 @@ int_type read_node(
 		// read invocation
 		ch = in.get();
 		Node_Ptr arg;
+		bool first_param { true };
 		while (ch != ')') {
 			ch = read_node(in, ch, arg);
 			if (ch == EOF && ! arg) {
@@ -27,7 +28,11 @@ int_type read_node(
 			}
 			if (! node) {
 				node = std::make_shared<Invocation>(arg);
+			} else if (first_param && dynamic_cast<Space *>(arg.get())) {
+				first_param = false;
+				continue;
 			} else {
+				first_param = false;
 				auto inv { dynamic_cast<Invocation *>(node.get()) };
 				if (inv) {
 					inv->push_back(arg);

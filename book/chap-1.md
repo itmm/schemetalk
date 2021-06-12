@@ -343,6 +343,7 @@ std::istream &operator>>(std::istream &in, Node_Ptr &node) {
 		// read invocation
 		ch = in.get();
 		Node_Ptr arg;
+		bool first_param { true };
 		while (ch != ')') {
 			ch = read_node(in, ch, arg);
 			if (ch == EOF && ! arg) {
@@ -350,8 +351,16 @@ std::istream &operator>>(std::istream &in, Node_Ptr &node) {
 			}
 			if (! node) {
 				node = std::make_shared<Invocation>(arg);
+			} else if (first_param && dynamic_cast<Space *>(
+				arg.get()
+			)) {
+				first_param = false;
+				continue;
 			} else {
-				auto inv { dynamic_cast<Invocation *>(node.get()) };
+				first_param = false;
+				auto inv { dynamic_cast<Invocation *>(
+					node.get()
+				) };
 				if (inv) {
 					inv->push_back(arg);
 				} else { fail("invalid node"); }
