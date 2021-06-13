@@ -13,7 +13,7 @@ Node_Ptr Write::invoke(Node_Ptr invocation, Node_Ptr state) {
 	auto inv { dynamic_cast<Invocation *>(invocation.get()) };
 	if (! inv) { fail("no invocation"); }
 	for (auto arg : *inv) {
-		std::cout << arg;
+		std::cout << arg->eval(arg, state);
 	}
 	return nil;
 }
