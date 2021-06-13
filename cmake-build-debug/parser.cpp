@@ -10,6 +10,7 @@ using char_type = std::istream::char_type;
 int_type read_node(
 	std::istream &in, int_type ch, Node_Ptr &node
 ) {
+	// read node
 	if (ch <= ' ') {
 		// read space
 		node = std::make_shared<Space>();
@@ -22,17 +23,20 @@ int_type read_node(
 		Node_Ptr arg;
 		bool first_param { true };
 		while (ch != ')') {
+			// read invocation arg
 			ch = read_node(in, ch, arg);
 			if (ch == EOF && ! arg) {
 				fail("incomplete invocation");
 			}
 			if (! node) {
+				if (dynamic_cast<Space *>(arg.get())) {
+					fail("space after (");
+				}
 				node = std::make_shared<Invocation>(arg);
 			} else if (first_param && dynamic_cast<Space *>(
 				arg.get()
 			)) {
 				first_param = false;
-				continue;
 			} else {
 				first_param = false;
 				auto inv { dynamic_cast<Invocation *>(

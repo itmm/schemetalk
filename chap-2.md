@@ -2,10 +2,9 @@
 
 Ein Vorteil von `SchemeTalk` ist der einfache Aufbau
 der Quelldateien.
-Eine Quelldatei besteht aus einer Liste von Knoten.
-Jeder Knoten kann sofort ausgeführt werden,
-sobald er gelesen wurde.
-Dabei gibt es zuerst drei Arten von Knoten:
+Aus der Quelldatei wird als interne Repräsentation ein
+_abstrakter Syntax-Baum_ erzeugt.
+Für diesen Baum gibt es zuerst drei unterschiedliche Arten:
 
 * Freiraum,
 * Token und
@@ -24,15 +23,10 @@ using Node_Ptr = std::shared_ptr<Node>;
 class Node {
 public:
 	virtual ~Node() = default;
-	virtual Node_Ptr eval(Node_Ptr self, Node_Ptr state);
 };
-
-inline Node_Ptr Node::eval(Node_Ptr self, Node_Ptr state) {
-	return self;
-}
 ```
 
-`Node_Ptr` behält die Anzahl der Verweise auf eine Objekt
+`Node_Ptr` behält die Anzahl der Verweise auf ein Objekt
 im Überblick.
 Sobald der letzte Verweis verschwindet,
 wird das Objekt freigegeben.
@@ -121,6 +115,12 @@ inline void Invocation::push_back(Node_Ptr argument) {
 }
 ```
 
+Die angegebenen Methoden ermöglichen es,
+neue Knoten als Kinder in den abstrakten Syntax-Baum
+einzuhängen
+und auf die ganzen Attribute zuzugreifen.
+Über die Argumente kann nur als Ganzes iteriert werden.
+
 Wichtig ist an dieser Stelle:
 Ich habe noch nicht beschrieben,
 wie die entsprechenden Elemente in der Quelldatei aussehen.
@@ -139,6 +139,8 @@ Doch dazu kommen wir mit dem Header `parser.h`:
 std::istream &operator>>(std::istream &in, Node_Ptr &node);
 ```
 
+Es können Knoten aus einem Eingabe-Strom gelesen werden,
+so wie andere Daten-Typen auch.
 Spannend wird natürlich die Implementierung `parser.cpp`:
 
 ```c++
@@ -151,15 +153,7 @@ using char_type = std::istream::char_type;
 int_type read_node(
 	std::istream &in, int_type ch, Node_Ptr &node
 ) {
-	if (ch <= ' ') {
-		// read space
-	} else if (ch == '(') {
-		// read invocation
-	} else if (ch == ')') {
-		fail("unmatched ')'");
-	} else {
-		// read token
-	}
+	// read node
 	return ch;
 }
 
@@ -176,6 +170,39 @@ std::istream &operator>>(std::istream &in, Node_Ptr &node) {
 }
 ```
 
+Bei der Implementierung werden zwei Datentypen unterschieden.
+Der `char_type` enthält nur ein Byte und damit alle Werte,
+die ein Zeichen annehmen kann.
+Der `int_type` kann mehr Werte umfassen.
+Er enthält zumindest zusätzlich noch den Wert `EOF`,
+sodass das Ende eines Eingabestroms signalisiert werden kann.
+
+Da für das Lesen eines Knotens ein Lookahead von einem Zeichen
+benötigt wird,
+wird am Anfang ein Zeichen gelesen
+und dieses nach dem Parsen in den Eingabe-Strom
+zurückgeschrieben.
+
+Das eigentliche Parsen in `parser.cpp` ist eine
+Fallunterscheidung:
+
+```c++
+// ...
+	// read node
+	if (ch <= ' ') {
+		// read space
+	} else if (ch == '(') {
+		// read invocation
+	} else if (ch == ')') {
+		fail("unmatched ')'");
+	} else {
+		// read token
+	}
+// ...
+```
+
+Freizeichen werden beim Parsen zusammengefasst:
+
 ```c++
 #include "space.h"
 // ...
@@ -186,6 +213,13 @@ std::istream &operator>>(std::istream &in, Node_Ptr &node) {
 		}
 // ...
 ```
+
+Ein Token besteht aus allen Zeichen bis zu:
+
+* einem Freizeichen,
+* einer öffnenden Klammer,
+* einer schließenden Klammer,
+* dem Dateiende.
 
 ```c++
 #include "token.h"
@@ -202,6 +236,16 @@ std::istream &operator>>(std::istream &in, Node_Ptr &node) {
 // ...
 ```
 
+## Parsen eines Funktionsaufrufs
+
+Ein Funktionsaufruf besteht aus der öffnenden Klammer `(`,
+einer Liste von Knoten und einer schließenden Klammer `)`.
+Die Knoten können auch wieder Funktionsaufrufe sein.
+Diese Liste darf nicht leer sein und der erste Knoten darf
+kein Freizeichen sein.
+
+Hier der grobe Rahmen in `parser.cpp`:
+
 ```c++
 #include "invocation.h"
 // ...
@@ -210,17 +254,34 @@ std::istream &operator>>(std::istream &in, Node_Ptr &node) {
 		Node_Ptr arg;
 		bool first_param { true };
 		while (ch != ')') {
+			// read invocation arg
+		}
+		ch = in.get();
+// ...
+```
+
+Der erste Knoten beschreibt die Funktion,
+die aufgerufen werden soll.
+Ein Freizeichen nach der Funktion wird ignoriert.
+Alle weiteren Knoten bilden die Argumente,
+mit welcher die Funktion aufgerufen wird.
+
+```c++
+// ...
+			// read invocation arg
 			ch = read_node(in, ch, arg);
 			if (ch == EOF && ! arg) {
 				fail("incomplete invocation");
 			}
 			if (! node) {
+				if (dynamic_cast<Space *>(arg.get())) {
+					fail("space after (");
+				}
 				node = std::make_shared<Invocation>(arg);
 			} else if (first_param && dynamic_cast<Space *>(
 				arg.get()
 			)) {
 				first_param = false;
-				continue;
 			} else {
 				first_param = false;
 				auto inv { dynamic_cast<Invocation *>(
@@ -230,12 +291,35 @@ std::istream &operator>>(std::istream &in, Node_Ptr &node) {
 					inv->push_back(arg);
 				} else { fail("invalid node"); }
 			}
-		}
-		ch = in.get();
 // ...
 ```
 
-in `st.cpp`: 
+Um die Hauptschleife zu implementieren,
+brauchen die Knoten noch eine weitere Methode:
+sie müssen ausgeführt werden können.
+Die Standard-Implementierung liefert einfach nur den Knoten
+zurück.
+
+Die Datei `node.h` muss wie folgt angepasst werden:
+
+```c++
+// ...
+public:
+	virtual Node_Ptr eval(Node_Ptr self, Node_Ptr state);
+// ...
+inline Node_Ptr Node::eval(Node_Ptr self, Node_Ptr state) {
+	return self;
+}
+```
+
+Wichtig ist, dass der Parameter `self` übergeben wird.
+Die Methode liefert keinen `Node*`,
+sondern einen `Node_Ptr` zurück.
+Der kann aber nicht so einfach aus einem Knoten erzeugt werden.
+Leichter ist es,
+wenn er einfach mit übergeben wird.
+
+Damit kann die Hauptschleife in `st.cpp` implementiert werden:
 
 ```c++
 #include "parser.h"

@@ -51,16 +51,16 @@ die selber interpretiert wird.
 Es ist auch gar nicht so schwer.
 Durch mein Programm `md-patcher` können wir das Programm
 Schritt für Schritt herleiten.
-Grob besteht die Hauptfunktion `main` in der Quell-Datei `st.cpp`
-aus zwei Teilen:
+Zuerst brauchen wir die Hauptfunktion `main` in der
+Quell-Datei `st.cpp`:
 
 ```c++
 int main(int argc, const char *argv[]) {
 }
 ```
 
-Zuerst muss das auszuführende Programm gelesen werden.
-Dann muss es ausgeführt werden.
+Das auszuführende Programm muss gelesen werden.
+Jeder Ausdruck kann nach dem Lesen direkt ausgeführt werden.
 `main` selbst ist in C++ die Funktion,
 die beim Start des Programms ausgeführt wird.
 Sie erhält zwei Argumente.
