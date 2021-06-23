@@ -152,6 +152,17 @@ using char_type = std::istream::char_type;
 
 int_type read_node(
 	std::istream &in, int_type ch, Node_Ptr &node
+);
+
+int_type read_invocation(
+	std::istream &in, int_type ch, Node_Ptr &node
+) {
+	// read invocation
+	return ch;
+}
+
+int_type read_node(
+	std::istream &in, int_type ch, Node_Ptr &node
 ) {
 	// read node
 	return ch;
@@ -192,7 +203,7 @@ Fallunterscheidung:
 	if (ch <= ' ') {
 		// read space
 	} else if (ch == '(') {
-		// read invocation
+		ch = read_invocation(in, ch, node);
 	} else if (ch == ')') {
 		fail("unmatched ')'");
 	} else {
@@ -232,7 +243,10 @@ Ein Token besteht aus allen Zeichen bis zu:
 			value += static_cast<char_type>(ch);
 			ch = in.get();
 		}
-		node = std::make_shared<Token>(value);
+		do {
+			// generate token subtypes
+			node = std::make_shared<Token>(value);
+		} while (false);
 // ...
 ```
 
@@ -249,14 +263,15 @@ Hier der grobe Rahmen in `parser.cpp`:
 ```c++
 #include "invocation.h"
 // ...
-		// read invocation
-		ch = in.get();
-		Node_Ptr arg;
-		bool first_param { true };
-		while (ch != ')') {
-			// read invocation arg
-		}
-		ch = in.get();
+	// read invocation
+	node.reset();
+	ch = in.get();
+	Node_Ptr arg;
+	bool first_param { true };
+	while (ch != ')') {
+		// read invocation arg
+	}
+	ch = in.get();
 // ...
 ```
 
@@ -268,29 +283,29 @@ mit welcher die Funktion aufgerufen wird.
 
 ```c++
 // ...
-			// read invocation arg
-			ch = read_node(in, ch, arg);
-			if (ch == EOF && ! arg) {
-				fail("incomplete invocation");
+		// read invocation arg
+		ch = read_node(in, ch, arg);
+		if (ch == EOF && ! arg) {
+			fail("incomplete invocation");
+		}
+		if (! node) {
+			if (dynamic_cast<Space *>(arg.get())) {
+				fail("space after (");
 			}
-			if (! node) {
-				if (dynamic_cast<Space *>(arg.get())) {
-					fail("space after (");
-				}
-				node = std::make_shared<Invocation>(arg);
-			} else if (first_param && dynamic_cast<Space *>(
-				arg.get()
-			)) {
-				first_param = false;
-			} else {
-				first_param = false;
-				auto inv { dynamic_cast<Invocation *>(
-					node.get()
-				) };
-				if (inv) {
-					inv->push_back(arg);
-				} else { fail("invalid node"); }
-			}
+			node = std::make_shared<Invocation>(arg);
+		} else if (first_param && dynamic_cast<Space *>(
+			arg.get()
+		)) {
+			first_param = false;
+		} else {
+			first_param = false;
+			auto inv { dynamic_cast<Invocation *>(
+				node.get()
+			) };
+			if (inv) {
+				inv->push_back(arg);
+			} else { fail("invalid node"); }
+		}
 // ...
 ```
 

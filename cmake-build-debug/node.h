@@ -15,15 +15,15 @@ using Node_Ptr = std::shared_ptr<Node>;
 
 class Node {
 public:
-#line 309
+#line 324
 #line 20 "chap-4.md"
 	virtual void write(std::ostream &out) { }
-#line 309 "chap-2.md"
+#line 324 "chap-2.md"
 	virtual Node_Ptr eval(Node_Ptr self, Node_Ptr state);
 #line 26
 	virtual ~Node() = default;
 };
-#line 311
+#line 326
 inline Node_Ptr Node::eval(Node_Ptr self, Node_Ptr state) {
 	return self;
 }
