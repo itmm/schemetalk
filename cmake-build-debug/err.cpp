@@ -1,4 +1,4 @@
-#line 120 "/home/timm/prj/schemetalk/chap-1.md"
+#line 120 "chap-1.md"
 #include "err.h"
 #include <iostream>
 #include <cstdlib>

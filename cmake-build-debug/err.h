@@ -1,4 +1,4 @@
-#line 111 "/home/timm/prj/schemetalk/chap-1.md"
+#line 111 "chap-1.md"
 #pragma once
 #include <string>
 

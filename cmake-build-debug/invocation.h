@@ -1,5 +1,5 @@
-#line 89 "/home/timm/prj/schemetalk/chap-2.md"
-#line 89 "/home/timm/prj/schemetalk/chap-2.md"
+#line 89 "chap-2.md"
+#line 89 "chap-2.md"
 #pragma once
 #include "node.h"
 #include <vector>
@@ -9,9 +9,9 @@ class Invocation: public Node {
 	using Container = std::vector<Node_Ptr>;
 	Container arguments_;
 public:
-#line 108 "/home/timm/prj/schemetalk/chap-3.md"
+#line 108 "chap-3.md"
 	Node_Ptr eval(Node_Ptr self, Node_Ptr state) override;
-#line 98 "/home/timm/prj/schemetalk/chap-2.md"
+#line 98 "chap-2.md"
 	explicit Invocation(Node_Ptr function);
 	const Node_Ptr &function() const;
 	void push_back(Node_Ptr argument);

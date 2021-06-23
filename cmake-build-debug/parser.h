@@ -1,4 +1,4 @@
-#line 135 "/home/timm/prj/schemetalk/chap-2.md"
+#line 135 "chap-2.md"
 #pragma once
 
 #include "node.h"

@@ -1,4 +1,4 @@
-#line 137 "/home/timm/prj/schemetalk/chap-4.md"
+#line 137 "chap-4.md"
 #include "node.h"
 #include "map.h"
 

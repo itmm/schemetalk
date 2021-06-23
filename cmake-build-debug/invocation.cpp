@@ -1,4 +1,4 @@
-#line 115 "/home/timm/prj/schemetalk/chap-3.md"
+#line 115 "chap-3.md"
 #include "invocation.h"
 #include "map.h"
 #include "command.h"
