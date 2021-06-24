@@ -4,7 +4,7 @@
 #line 65 "chap-3.md"
 #line 65 "chap-3.md"
 #line 120 "chap-4.md"
-#line 146 "chap-5.md"
+#line 203 "chap-5.md"
 #include "arith.h"
 #line 120 "chap-4.md"
 #include "io.h"
@@ -38,7 +38,7 @@ int main(int argc, const char *argv[]) {
 #line 352 "chap-2.md"
 	Node_Ptr got;
 #line 123 "chap-4.md"
-#line 149 "chap-5.md"
+#line 206 "chap-5.md"
 	register_arith_entries(state);
 #line 123 "chap-4.md"
 	register_io_entries(state);

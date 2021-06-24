@@ -63,8 +63,65 @@ Node_Ptr Add::invoke(Node_Ptr invocation, Node_Ptr state) {
 	return std::make_shared<Number>(value + to);
 }
 
+class Mult: public Command {
+public:
+	Node_Ptr invoke(
+		Node_Ptr invocation, Node_Ptr state
+	) override;
+};
+
+Node_Ptr Mult::invoke(
+	Node_Ptr invocation, Node_Ptr state
+) {
+	double value, with;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"with:", with, state
+	);
+	return std::make_shared<Number>(value * with);
+}
+
+class Subtract: public Command {
+	public:
+	Node_Ptr invoke(
+		Node_Ptr invocation, Node_Ptr state
+	) override;
+};
+
+Node_Ptr Subtract::invoke(
+	Node_Ptr invocation, Node_Ptr state
+) {
+	double from, value;
+	parse_two_args_cmd(
+		invocation, "from:", from,
+		"value:", value, state
+	);
+	return std::make_shared<Number>(from - value);
+}
+
+class Divide: public Command {
+public:
+	Node_Ptr invoke(
+		Node_Ptr invocation, Node_Ptr state
+	) override;
+};
+
+Node_Ptr Divide::invoke(
+	Node_Ptr invocation, Node_Ptr state
+) {
+	double value, by;
+	parse_two_args_cmd(
+		invocation, "value:", value,
+		"by:", by, state
+	);
+	return std::make_shared<Number>(value / by);
+}
+
 void register_arith_entries(Node_Ptr state) {
 	auto s { dynamic_cast<Map *>(state.get()) };
 	if (! s) { fail("no state"); }
 	s->insert("add", std::make_shared<Add>());
+	s->insert("subtract", std::make_shared<Subtract>());
+	s->insert("multiply", std::make_shared<Mult>());
+	s->insert("divide", std::make_shared<Divide>());
 }
